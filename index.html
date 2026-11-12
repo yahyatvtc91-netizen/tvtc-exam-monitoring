@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>نظام المراقبات</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Tahoma, Arial, sans-serif;
+      background: #f1f7f6;
+      color: #153e43;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { background: #103f43; color: #fff; padding: 52px 24px 48px; }
+    header > div, main { max-width: 880px; margin-inline: auto; }
+    h1 { margin: 0 0 12px; font-size: clamp(2rem, 5vw, 3rem); }
+    p { margin: 0; line-height: 1.9; }
+    header p { color: #d4ebe8; }
+    main {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+      gap: 16px;
+      padding: 28px 24px;
+    }
+    article {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 14px;
+      padding: 24px;
+      background: #fff;
+      border: 1px solid #cee3e0;
+      border-radius: 12px;
+    }
+    h2 { margin: 0; font-size: 1.24rem; }
+    article p { color: #355a5e; }
+    a {
+      justify-self: start;
+      padding: 12px 16px;
+      border-radius: 7px;
+      background: #0d6a61;
+      color: white;
+      font-weight: bold;
+      text-decoration: none;
+    }
+    a:hover { background: #094e48; }
+    a:focus-visible { outline: 3px solid #a85922; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>نظام المراقبات</h1>
+      <p>إعداد جداول الاختبارات وتوزيع القاعات والمراقبين وطباعة التقارير</p>
+    </div>
+  </header>
+  <main>
+    <article>
+      <h2>الإصدار <bdi>5.3</bdi></h2>
+      <p>توحيد التقارير وتثبيت القاعة وكل مراقب بصورة مستقلة مع آلية التوزيع الأساسية.</p>
+      <a href="v5.3/">تشغيل الإصدار <bdi>5.3</bdi></a>
+    </article>
+    <article>
+      <h2>الإصدار <bdi>5.4</bdi> التجريبي</h2>
+      <p>يضيف مرحلة لتحسين تقارب أنصبة المراقبين وتوافق الإسناد مع القسم.</p>
+      <a href="v5.4/">تشغيل الإصدار <bdi>5.4</bdi> التجريبي</a>
+    </article>
+  </main>
+</body>
+</html>
