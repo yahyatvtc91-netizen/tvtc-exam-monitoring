@@ -39,7 +39,7 @@ table{font-size:12px}th{background:#eef5f4;color:#3b6368;font-weight:700;border-
 tbody tr:nth-child(even){background:#fcfdfd}tbody tr:hover{background:#f4faf8}tbody tr:last-child td{border-bottom:0}td input,td select{font-size:12px;min-width:105px;min-height:32px;max-width:175px;background:#fff;border:1px solid #e0e9e9;padding:6px 7px}td button{font-size:11px;padding:6px 9px;color:#a34c5e;border-color:#efdce1;background:#fff9fa}
 #trainersTable th:nth-child(6){min-width:190px;white-space:normal}#scheduleTable .autoNotes{font-size:11px;min-width:190px;max-width:280px;padding:7px 9px;line-height:1.8;border-radius:7px}.note-ok{background:#eaf8f2!important;border:1px solid #d1eee1}.note-alert{background:#fff3f4!important;border:1px solid #f2d8dc!important;color:#bb5265!important}
 .source{color:#7a969a;font-size:10px}.info,.hint{font-size:11px;line-height:1.8}.importRow{padding:9px 0;font-size:11px}.importRow strong{font-weight:600}.importRow .audit-ok,.importRow .audit-warning{padding:2px 7px;border-radius:5px;background:#eaf8f2}.importRow .audit-warning{background:#fff5df}
-#trainersTable select[data-f=active]:has(option[value=true]:checked){color:#148b70;background:#eef9f3;border-color:#d3ecdf}#trainersTable select[data-f=active]:has(option[value=false]:checked){color:#b84a5d;background:#fff2f4;border-color:#efd5dc}#roomsTable tbody tr:not(:has(input[data-enabled]:checked)){background:#fff8f9}#roomsTable tbody tr:has(input[data-enabled]:checked) td:first-child{border-right:3px solid #5abbaa}
+#trainersTable select[data-f=active]:has(option[value=true]:checked){color:#148b70;background:#eef9f3;border-color:#d3ecdf}#trainersTable select[data-f=active]:has(option[value=false]:checked){color:#b84a5d;background:#fff2f4;border-color:#efd5dc}#roomsTable tbody tr.roomExcluded{background:#fff8f9}
 .subtabs{gap:4px;padding:0 0 8px;border-bottom:1px solid #dce8e8;margin-bottom:20px}.subtabs button{font-size:12px;border-radius:8px;border-bottom:0;padding:9px 15px}.subtabs button.active{color:#117e73;background:#e4f5f0;border-bottom:0}
 .dayCard{overflow:hidden}.dayTitle{background:#f2f8f6;padding:13px 17px;font-size:13px}.dayTitle label{font-size:11px;font-weight:500}.slot{font-size:12px;line-height:1.8;padding:17px;color:#55797b}.slot:has(input:checked){background:#fff0f2;color:#b14b5f}.dayTitle:has(input:checked){background:#ffedef;color:#b34a5b}.slot small{font-size:11px;color:inherit}.slot input{transform:none;width:17px;height:17px}
 .periodRow,.dayRow{gap:9px;margin:9px 0;padding:8px;border-radius:8px}.periodRow:has(input:checked),.dayRow:has(input:checked){background:#f1f9f5}.periodRow input:not([type=checkbox]){font-size:12px;min-width:0;width:100%}.dayRow span{font-size:12px}.dayRow span:last-child{font-size:10px}.weekHeading{background:#edf5f3;font-size:12px;padding:9px 11px;border-radius:7px;margin-top:18px}.selectAll{font-size:12px;padding-bottom:13px}
@@ -243,9 +243,6 @@ dialog{border:1px solid #dbe9e5;border-radius:15px;box-shadow:0 20px 75px #173b3
 #scheduleTable th:last-child{min-width:92px}
 #scheduleTable .bulkPinCheck{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-size:10px}
 #scheduleTable .bulkPinCheck input{width:14px;height:14px;accent-color:#087b55}
-#roomsTable .roomNameControl{display:flex;align-items:center;gap:6px}
-#roomsTable .roomNameControl input[type=checkbox]{width:16px;min-width:16px;height:16px;accent-color:#087b55}
-#roomsTable .roomNameControl input[data-f=name]{min-width:0;flex:1}
 
 .distributionStatus{margin:8px 0 14px;padding:12px 15px;border:1px solid #cae2da;border-inline-start:4px solid #177a4c;border-radius:7px;background:#edf7f2;color:#194a3c;font-weight:700;line-height:1.6}
 .distributionStatus[hidden]{display:none}
@@ -307,3 +304,5 @@ dialog{border:1px solid #dbe9e5;border-radius:15px;box-shadow:0 20px 75px #173b3
 #report-summary .countGroup th:last-child,#report-summary .countGroup td:last-child{width:7rem;text-align:center}
 #report-summary .countGroup td{color:#08756d;font-weight:700}
 #page-reports .freeReportPreview[hidden]{display:none}
+
+#roomsTable .roomExcludedLabel{display:block;color:#a1263e;margin-top:4px}
