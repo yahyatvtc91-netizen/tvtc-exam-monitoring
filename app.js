@@ -1200,7 +1200,6 @@ function bindUi(){
     }catch(error){state=oldState;throw error;}
   }catch(err){notify(err.message,"error");}finally{e.target.value="";}};
   $("#resetBtn").onclick=async()=>{if(confirm("هل تريد تهيئة فصل جديد؟ سيتم تنزيل نسخة احتياطية أولًا.")){download(`نسخة_قبل_التهيئة_${Date.now()}.json`,JSON.stringify(state));state=defaultState();await dbSet(STATE_KEY,state);renderAll();runAudit();toast("تمت تهيئة فصل جديد بعد تجهيز النسخة الاحتياطية");}};
-  $("#scheduleDistributeBtn").onclick=()=>runOptimizedDistribution("both");
   for(const id of ["#scheduleResetMonitorsBtn"])$(id).onclick=()=>{if(confirm("إزالة جميع المراقبين من الصفوف غير المثبتة ثم إعادة توزيعهم لاحقًا؟"))resetMonitors();};
   $("#assignRoomsBtn").onclick=()=>runOptimizedDistribution("rooms");
   $("#clearRoomsBtn").onclick=()=>{if(!confirm("مسح القاعات غير المثبتة فقط؟"))return;resetRoomAssignments();};

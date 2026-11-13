@@ -288,7 +288,7 @@ function renderDistributionStatus(message, level) {
 
 async function runOptimizedDistribution(mode) {
   if (activeDistribution) return;
-  const buttons = ["#assignMonitorsBtn", "#scheduleDistributeBtn", "#assignRoomsBtn", "#clearRoomsBtn", "#scheduleResetMonitorsBtn"].map(id => $(id));
+  const buttons = ["#assignMonitorsBtn", "#assignRoomsBtn", "#clearRoomsBtn", "#scheduleResetMonitorsBtn"].map(id => $(id));
   const started = performance.now();
   activeDistribution = mode;
   for (const button of buttons) button.disabled = true;
