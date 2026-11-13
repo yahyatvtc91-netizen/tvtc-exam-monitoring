@@ -1,13 +1,13 @@
 /* Read-only presentation layer. No writes to state or storage. */
 "use strict";
-function identityChartData(rows, roomCheck) {
+function identityChartData(rows, roomCheck, departmentLabel = value => value) {
   const status={complete:0,partial:0,empty:0},days=new Map(),departments=new Map();
   for(const e of rows){
     const room=roomCheck(e),both=!!e.inv1&&!!e.inv2&&e.inv1!==e.inv2;
     if(room&&both)status.complete++;else if(room||e.inv1||e.inv2)status.partial++;else status.empty++;
     const key=[e.date||"",e.day||"غير محدد"].join("|");
     if(!days.has(key))days.set(key,{date:e.date||"",day:e.day||"غير محدد",value:0});days.get(key).value++;
-    const department=e.dept||"غير محدد";departments.set(department,(departments.get(department)||0)+1);
+    const department=departmentLabel(e.dept)||"غير محدد";departments.set(department,(departments.get(department)||0)+1);
   }
   return {total:rows.length,status,days:[...days.values()].sort((a,b)=>a.date.localeCompare(b.date,"ar",{numeric:true})),departments:[...departments].map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value||a.label.localeCompare(b.label,"ar"))};
 }
@@ -46,7 +46,7 @@ if(typeof document!=="undefined")(()=>{
   function chartCard(title,subtitle,body,cls=''){return `<article class="chartCard ${cls}"><div class="chartHeading"><div><h3>${title}</h3><p>${subtitle}</p></div><span class="chartIcon">${icon('chart')}</span></div>${body}</article>`;}
   function renderVisualDashboard(){
     if(!state)return;
-    const data=identityChartData(eligibleExams(),e=>!!validRoomLabel(e.room)&&roomRecord(e.room)?.enabled!==false);
+    const data=identityChartData(eligibleExams(),e=>!!validRoomLabel(e.room)&&roomRecord(e.room)?.enabled!==false,normalizeDepartment);
     const total=data.total,values=[data.status.complete,data.status.partial,data.status.empty],colors=['#18aa91','#e7b04b','#cf6470'];
     let offset=0;const segments=values.map((v,i)=>{const percent=total?v/total*100:0;const result=`<circle cx="110" cy="110" r="80" pathLength="100" fill="none" stroke="${colors[i]}" stroke-width="20" stroke-dasharray="${percent} ${100-percent}" stroke-dashoffset="${-offset}" transform="rotate(-90 110 110)"/>`;offset+=percent;return result;}).join('');
     const percentage=total?Math.round(values[0]/total*100):0;
