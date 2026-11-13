@@ -1239,7 +1239,7 @@ async function announcementPageImage(sheet, css) {
   return {width, height, jpeg:canvas.toDataURL("image/jpeg", 0.85)};
 }
 
-async function saveAnnouncementPdf(doc, button) {
+async function saveAnnouncementPdf(doc, button, link) {
   button.disabled = true;
   const originalLabel = button.textContent;
   try {
@@ -1257,9 +1257,11 @@ async function saveAnnouncementPdf(doc, button) {
       const width = image.width*scale, height = image.height*scale;
       pdf.addImage(image.jpeg, "JPEG", (pageWidth-width)/2, 9, width, height);
     }
-    pdf.save("إعلان جدول الاختبارات.pdf");
+    link.href = doc.defaultView.URL.createObjectURL(pdf.output("blob"));
+    link.hidden = false;
+    link.focus();
   } catch (error) {
-    notifyError("تعذر تنزيل PDF: " + error.message);
+    doc.getElementById("pdfError").textContent = "تعذر تجهيز PDF: " + error.message;
   } finally {
     button.textContent = originalLabel;
     button.disabled = false;
@@ -1274,7 +1276,7 @@ function printAnnouncement(onlyDate=""){
     if(!sheets){win.close();notifyError("لا توجد اختبارات مجدولة لهذا الاختيار");return;}
     const doc=win.document;
     doc.open();
-    doc.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>إعلان جدول الاختبارات للمتدربين</title><style>${announcementPrintCss}</style></head><body><div class="noPrint"><button id="downloadPdf" disabled>تنزيل PDF أفقي A4</button> <button id="print" disabled>طباعة مباشرة</button></div>${sheets}</body></html>`);
+    doc.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>إعلان جدول الاختبارات للمتدربين</title><style>${announcementPrintCss}</style></head><body><div class="noPrint"><button id="downloadPdf" disabled>تجهيز PDF أفقي A4</button> <a id="pdfLink" download="إعلان جدول الاختبارات.pdf" hidden>تنزيل PDF</a> <button id="print" disabled>طباعة مباشرة</button> <span id="pdfError" role="alert"></span></div>${sheets}</body></html>`);
     doc.close();
     doc.fonts.ready.then(()=>{
       paginateAnnouncement(doc);
@@ -1282,7 +1284,13 @@ function printAnnouncement(onlyDate=""){
       button.onclick=()=>win.print();
       button.disabled=false;
       const downloadButton=doc.getElementById("downloadPdf");
-      downloadButton.onclick=()=>saveAnnouncementPdf(doc, downloadButton);
+      const link=doc.getElementById("pdfLink");
+      downloadButton.onclick=()=>{
+        if(link.hasAttribute("href"))win.URL.revokeObjectURL(link.href);
+        link.hidden=true;
+        doc.getElementById("pdfError").textContent="";
+        saveAnnouncementPdf(doc, downloadButton, link);
+      };
       downloadButton.disabled=false;
     }).catch(err=>notifyError("تعذر تجهيز الطباعة: "+err.message));
     win.focus();
