@@ -621,20 +621,18 @@ function manualMonitorIssue(name,exam,field,context) {
     return "للمراقب اختبار مقرر في الفترة نفسها وفق الإعداد الحالي.";
   }
   let count=0;
-  const date=dayKey(exam), periods=new Set([Number(exam.period)]);
   for (const e of exams) for (const f of assignmentFields) {
     if (e===exam&&f===field || norm(e[f])!==target) continue;
     count++;
-    if (dayKey(e)===date) periods.add(Number(e.period));
   }
   if (count>=person.max) return "بلغ المراقب حده الأعلى.";
-  if (hasConsecutiveTriple(periods)) return "هذا التكليف يؤدي إلى ثلاث فترات متتالية، والحد المسموح فترتان متتاليتان.";
   return "";
 }
 function eligibleMonitorChoices(exam,field) {
   const context=manualMonitorContext();
   return [...context.ownership.byName.values()]
-    .filter(person=>!manualMonitorIssue(person.name,exam,field,context));
+    .filter(person=>!manualMonitorIssue(person.name,exam,field,context)&&
+      !wouldMakeThree(person.name,exam,field));
 }
 function scheduleMonitorOptions(exam,field) {
   const selected=exam[field]||"";
@@ -722,7 +720,7 @@ function runAudit(){
       periods.add(Number(e.period));byDay.set(key,periods);
     }
     for (const [key,periods] of byDay) if (hasConsecutiveTriple(periods)) {
-      rows.push(["خطأ","ثلاث فترات متتابعة",`${t.name} — ${displayDate(key)}`,"المدربون"]);
+      rows.push(["تحذير","ثلاث فترات متتابعة",`${t.name} — ${displayDate(key)}`,"المدربون"]);
     }
   }
   for (const {exam,values} of buildings.values()) if (values.size>2) {
@@ -930,7 +928,9 @@ function renderSchedule(){
       x.onchange=()=>{
         const issue=manualMonitorIssue(x.value,e,x.dataset.f);
         if(issue){notifyError(issue);x.value=e[x.dataset.f];return;}
+        const warning=x.value&&wouldMakeThree(x.value,e,x.dataset.f);
         e[x.dataset.f]=x.value;saveSoon();renderSchedule();renderReports();runAudit();
+        if(warning)notify("تم حفظ الإسناد اليدوي. أصبح للمراقب ثلاث فترات متتالية في هذا اليوم.","warning");
       };
     }
     else if(x.dataset.f==="room"){x.disabled=isLocked(e,"room");x.onchange=()=>{e.room=x.value;saveSoon();renderSchedule();renderReports();runAudit();};}
