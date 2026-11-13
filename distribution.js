@@ -180,6 +180,7 @@ function validateDistribution(input, result, mode) {
   const people = new Map(input.people.map(p => [p.id, p]));
   const allowed = new Map(input.people.map(p => [p.id, new Set(p.eligible)]));
   const counts = new Map(input.people.map(p => [p.id, 0]));
+  const committeeShortfalls = [];
   const occupiedRooms = new Set(), occupiedPeople = new Set(), occupiedGroups = new Set();
   const buildings = new Map(), peopleDays = new Map();
   let roomCount = 0, filled = 0, complete = 0, inside = 0, outside = 0, leadership = 0;
@@ -233,8 +234,8 @@ function validateDistribution(input, result, mode) {
     for (const [id, count] of counts) {
       const person = people.get(id);
       if (count > person.max) throw new Error("تجاوز نصاب مراقب حده الأعلى.");
-      if (person.active && person.committee && count !== person.max) {
-        throw new Error(`لم يتحقق نصاب عضو اللجنة ${person.name}: ${count} من ${person.max}.`);
+      if (person.active && person.committee && count < person.max) {
+        committeeShortfalls.push({name:person.name, assigned:count, target:person.max});
       }
     }
     for (const periods of peopleDays.values()) {
@@ -246,7 +247,7 @@ function validateDistribution(input, result, mode) {
   const standard = (result.policy?.peers || []).map(id => counts.get(id));
   const max = standard.length ? Math.max(...standard) : null;
   const min = standard.length ? Math.min(...standard) : null;
-  return {rows, roomCount, filled, complete, inside, outside, leadership, overCapacity,
+  return {rows, roomCount, filled, complete, inside, outside, leadership, overCapacity, committeeShortfalls,
     min, max, gap:standard.length ? max-min : null, standard:standard.length,
     limited:result.policy?.limited.length || 0,
     certified:result.stages.every(stage => stage.status === "optimal")};
@@ -374,6 +375,9 @@ async function runOptimizedDistribution(mode) {
     if (mode === "both") parts.push(`الاختبارات المكتملة ${m.complete}/${total}`);
     if (mode !== "rooms") {
       parts.push(`خانات المراقبة ${m.filled}/${total * 2}`);
+      for (const {name, assigned, target} of m.committeeShortfalls) {
+        parts.push(`عضو اللجنة ${name}: أُسندت ${assigned} من ${target} مراقبات (النقص ${target - assigned})`);
+      }
       if (m.min !== null) parts.push(`النصاب العام ${m.min}–${m.max} لدى ${m.standard} مدربًا (الفرق ${m.gap})`);
       if (m.limited) parts.push(`${m.limited} بسقوف أو إتاحة أقل`);
       if (m.inside + m.outside) parts.push(`داخل القسم ${(m.inside * 100 / (m.inside + m.outside)).toFixed(2)}%`);
@@ -386,7 +390,7 @@ async function runOptimizedDistribution(mode) {
     }
     if (!m.certified) parts.push("نتيجة مدققة ضمن المهلة");
     parts.push(`${((performance.now() - started) / 1000).toFixed(1)} ثانية`);
-    const needsReview = m.gap > MAX_MONITORING_GAP || m.complete < total || !m.certified;
+    const needsReview = m.committeeShortfalls.length > 0 || m.gap > MAX_MONITORING_GAP || m.complete < total || !m.certified;
     renderDistributionStatus(parts.join(" · "), needsReview ? "review" : "done");
     notify(`${needsReview?"اكتمل التوزيع مع ملاحظات":"اكتمل التوزيع بنجاح"} · ${parts.join(" · ")}`,needsReview?"warning":"success");
     return monitorResult;
