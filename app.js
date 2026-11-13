@@ -536,18 +536,21 @@ function resetRoomAssignments(){
   return cleared;
 }
 // القيادات الإشرافية: سجلات منفصلة مع الاحتفاظ ببيانات المدرب الأصلية.
-const LEADERSHIP_ROLES=["عميد","وكيل تدريب","وكيل متدربين","وكيل جودة","عضو إرشاد"];
+const COMMITTEE_ROLE="عضو لجنة";
+const COMMITTEE_CONFLICT="اختبار قسم عضو اللجنة";
+const LEADERSHIP_ROLES=["عميد","وكيل تدريب","وكيل متدربين","وكيل جودة","عضو إرشاد",COMMITTEE_ROLE];
 function leaders(){state.leadership??=[];return state.leadership;}
 function leadershipTrainer(entry){return entry.trainer;}
 function allMonitoringTrainers(){return [...state.trainers,...leaders().map(leadershipTrainer)];}
 function findMonitoringTrainer(name){return allMonitoringTrainers().find(t=>norm(t.name)===norm(name));}
-function leadershipGroup(entry){return entry.role==="عضو إرشاد"?"guidance":"executive";}
-function leadershipConflicts(){const issues=[];const bySlot=new Map();for(const e of eligibleExams())for(const name of [e.inv1,e.inv2]){const l=leaders().find(x=>norm(x.trainer.name)===norm(name));if(!l)continue;const key=slotKey(e)+"|"+leadershipGroup(l);const set=bySlot.get(key)||new Set();set.add(norm(l.trainer.name));bySlot.set(key,set);}for(const [key,set] of bySlot)if(set.size>1)issues.push({slot:key,names:[...set]});return issues;}
+function leadershipGroup(entry){if(entry.role===COMMITTEE_ROLE)return null;return entry.role==="عضو إرشاد"?"guidance":"executive";}
+function leadershipConflicts(){const issues=[];const bySlot=new Map();for(const e of eligibleExams())for(const name of [e.inv1,e.inv2]){const l=leaders().find(x=>norm(x.trainer.name)===norm(name));const group=l&&leadershipGroup(l);if(!group)continue;const key=slotKey(e)+"|"+group;const set=bySlot.get(key)||new Set();set.add(norm(l.trainer.name));bySlot.set(key,set);}for(const [key,set] of bySlot)if(set.size>1)issues.push({slot:key,names:[...set]});return issues;}
 function addLeadership(trainerName,role,max=0,manualId=""){
  if(!LEADERSHIP_ROLES.includes(role))throw Error("منصب إشرافي غير معتمد");
  const name=String(trainerName||"").trim(),limit=Number(max);if(!name||!Number.isInteger(limit)||limit<0)throw Error("تحقق من الاسم والحد الأعلى");
  if(leaders().some(l=>norm(l.trainer.name)===norm(name)))throw Error("الاسم مسجل في القيادات الإشرافية");
  const idx=state.trainers.findIndex(t=>norm(t.name)===norm(name));const source=idx>=0?state.trainers[idx]:null;
+ if(role===COMMITTEE_ROLE&&(!source||!departmentKeys(source.dept).length))throw Error("اختر عضو اللجنة من قائمة المدربين وتأكد من تحديد قسمه.");
  if(!source&&allMonitoringTrainers().some(t=>canonicalTrainerId(t.id)&&canonicalTrainerId(t.id)===canonicalTrainerId(manualId)))throw Error("الرقم الوظيفي مكرر");
  const trainer=source?structuredClone(source):{key:"lead_manual_"+Date.now()+"_"+Math.random().toString(36).slice(2),id:canonicalTrainerId(manualId),name,dept:"غير محدد",max:limit,active:true,source:"يدوي إشرافي"};
  if(source)state.trainers.splice(idx,1);
@@ -587,6 +590,12 @@ function manualMonitorIssue(name,exam,field) {
   const target=norm(name);
   const entry=monitoringRoster().find(({trainer})=>norm(trainer.name)===target);
   if (!entry||!activeTrainer(entry.trainer)) return "المراقب غير نشط أو غير معروف.";
+  if (entry.committee) {
+    const ownership=courseOwnership(eligibleExams(),distributionPeople(false));
+    if (committeeDepartmentConflict(ownership.byName.get(target),ownership.slots.get(slotKey(exam)))) {
+      return "عضو اللجنة غير متاح للمراقبة عند وجود اختبار لقسمه أو غياب قسمه.";
+    }
+  }
   if (!trainerAvailable(entry.trainer,exam)) return "المراقب مفرغ في هذه الفترة.";
   if (!monitoringOwnExamAllowed(entry.trainer)&&courseTrainerConflict(name,exam)) return "للمراقب اختبار مقرر في الفترة نفسها وفق الإعداد الحالي.";
   let count=0;
@@ -664,6 +673,7 @@ function runAudit(){
     if(e.inv1&&e.inv1===e.inv2)rows.push(["خطأ","تكرار المراقب",`${e.inv1} في الشعبة ${e.section}`,"المدربون"]);
     for(const n of [e.inv1,e.inv2])if(n){const name=norm(n);counts.set(name,(counts.get(name)||0)+1);const k=`${slotKey(e)}|${name}`;if(seen.has(k))rows.push(["خطأ","تعارض مراقب",`${n} في ${e.day} الفترة ${e.period}`,"المدربون"]);else seen.set(k,true);
       const t=people.get(name)?.trainer;if(!t||!activeTrainer(t))rows.push(["خطأ","مدرب غير نشط أو غير معروف",`${n} — شعبة ${e.section}`,"المدربون"]);
+      if(committeeDepartmentConflict(ownership.byName.get(name),ownership.slots.get(slotKey(e))))rows.push(["خطأ",COMMITTEE_CONFLICT,`${n} — ${e.day} الفترة ${e.period} — يوجد اختبار للقسم أو لم يُحدد قسم العضو`,"المدربون"]);
       if(t&&!trainerAvailable(t,e))rows.push(["خطأ","مخالفة التفريغ",`${n} في ${e.day} الفترة ${e.period}`,"المدربون"]);
       if(t&&!monitoringOwnExamAllowed(t)&&courseTrainerConflict(n,e,ownership))rows.push(["خطأ","مدرب مقرر لديه اختبار",`${n} في ${e.day} الفترة ${e.period}`,"المدربون"]);
     }
@@ -700,7 +710,7 @@ function runAudit(){
   if(typeof document!=="undefined"){renderAudit();if(!$("#scheduleAuditPanel")?.hidden)renderScheduleAudit();}return rows;
 }
 function auditKey(row){return JSON.stringify([row[0],row[1],row[2],row[3],row[4]||""]);}
-function canExceptAuditRow(row){return row[1]!=="ثلاث فترات متتابعة";}
+function canExceptAuditRow(row){return row[1]!=="ثلاث فترات متتابعة"&&row[1]!==COMMITTEE_CONFLICT;}
 function activeAuditRows(){return auditRows.filter(row=>!state.auditExceptions?.[auditKey(row)]);}
 
 function renderScheduleAudit(){
@@ -739,9 +749,9 @@ function normalizeDepartment(value){
 function departmentOptions(current){return APPROVED_DEPARTMENTS.map(d=>`<option value="${esc(d)}" ${normalizeDepartment(current)===d?"selected":""}>${esc(d)}</option>`).join("");}
 function renderLeadership(){
  const tbody=$("#leadershipTable tbody");if(!tbody)return;
- tbody.innerHTML=leaders().map(l=>`<tr><td>${esc(l.trainer.name)}</td><td>${esc(l.trainer.id||"—")}</td><td>${esc(l.role)}</td><td><input type="number" min="0" data-limit="${esc(l.trainer.key)}" value="${l.max}"></td><td>${assignmentsFor(l.trainer.name).length}</td><td><button type="button" data-remove-leader="${esc(l.trainer.key)}">إزالة وإعادة المدرب</button></td></tr>`).join("")||'<tr><td colspan="6">لم تُضف قيادات إشرافية بعد.</td></tr>';
- for(const input of $$('[data-limit]',tbody))input.onchange=()=>{const l=leaders().find(x=>x.trainer.key===input.dataset.limit);if(!l)return;const v=Number(input.value);if(!Number.isInteger(v)||v<0){input.value=l.max;return;}l.max=v;saveSoon();renderLeadership();runAudit();toast("تم تحديث سقف مراقبات القيادة");};
- for(const b of $$('[data-remove-leader]',tbody))b.onclick=()=>{const l=leaders().find(x=>x.trainer.key===b.dataset.removeLeader);if(!l)return;removeLeadership(l.trainer.name);renderAll();toast("تمت إزالة القيادة الإشرافية وإعادة بيانات المدرب عند انطباق ذلك");};
+ tbody.innerHTML=leaders().map(l=>`<tr><td>${esc(l.trainer.name)}</td><td>${esc(l.trainer.id||"—")}</td><td>${esc(l.role)}</td><td>${esc(l.trainer.dept||"غير محدد")}</td><td><input type="number" min="0" data-limit="${esc(l.trainer.key)}" value="${l.max}"></td><td>${assignmentsFor(l.trainer.name).length}</td><td><button type="button" data-remove-leader="${esc(l.trainer.key)}">إزالة وإعادة المدرب</button></td></tr>`).join("")||'<tr><td colspan="7">لم تُضف قيادات أو أعضاء لجان بعد.</td></tr>';
+ for(const input of $$('[data-limit]',tbody))input.onchange=()=>{const l=leaders().find(x=>x.trainer.key===input.dataset.limit);if(!l)return;const v=Number(input.value);if(!Number.isInteger(v)||v<0){input.value=l.max;return;}l.max=v;saveSoon();renderLeadership();runAudit();toast("تم تحديث سقف المراقبات");};
+ for(const b of $$('[data-remove-leader]',tbody))b.onclick=()=>{const l=leaders().find(x=>x.trainer.key===b.dataset.removeLeader);if(!l)return;removeLeadership(l.trainer.name);renderAll();toast("تمت الإزالة من القيادات ولجان الاختبار");};
  const selector=$("#leadershipTrainer");const old=selector.value;selector.innerHTML='<option value="">— اختر من المدربين —</option>'+state.trainers.slice().sort((a,b)=>a.name.localeCompare(b.name,"ar")).map(t=>`<option value="${esc(t.name)}">${esc(t.name)} — ${esc(t.id)}</option>`).join("");selector.value=old;
 }
 function renderTrainers(){const control=$("#ownExamMonitoringMode");control.value=state.meta?.ownExamMonitoringMode||"individual";const individual=control.value==="individual";const b=$("#trainersTable tbody");b.innerHTML=state.trainers.map(t=>`<tr data-key="${t.key}"><td><input data-f="id" value="${esc(t.id)}"></td><td><input data-f="name" type="text" aria-label="اسم المدرب" value="${esc(t.name)}"></td><td><select data-f="dept" aria-label="القسم">${departmentOptions(t.dept)}</select></td><td><select data-f="active"><option value="true" ${activeTrainer(t)?"selected":""}>متاح</option><option value="false" ${!activeTrainer(t)?"selected":""}>X</option></select></td><td><input type="number" min="0" data-f="max" value="${num(t.max,999)}"></td><td>${individual?'<label><input type="checkbox" data-f="allowOwnExamMonitoring" '+(t.allowOwnExamMonitoring===true?'checked':'')+'> نعم</label>':`<span class="monitoringPolicyStatus">${monitoringOwnExamAllowed(t)?"مسموح":"ممنوع"}</span>`}</td><td class="source">${esc(t.source)}</td></tr>`).join("");
@@ -925,12 +935,17 @@ function availabilityReportDays(){
   const map=new Map();for(const e of eligibleExams())if(e.date){const k=dayKey(e);if(!map.has(k))map.set(k,{...e});}
   return [...map.values()].sort((a,b)=>(calendarTime(a.date)??Infinity)-(calendarTime(b.date)??Infinity)||dayKey(a).localeCompare(dayKey(b)));
 }
+function reportMonitoringTrainers(){
+  return [...state.trainers, ...leaders().filter(l=>l.role===COMMITTEE_ROLE)
+    .map(l=>({...l.trainer,max:l.max}))].filter(activeTrainer);
+}
 function availabilityReportHtml(kind){
   const days=availabilityReportDays(),exams=eligibleExams();
   if(!days.length)return '<p>لا توجد أيام اختبارات مجدولة.</p>';
   const isRoom=kind==='rooms';
-  const subjects=isRoom?state.rooms.filter(r=>r.enabled!==false&&roomCode(r)).sort((a,b)=>roomCode(a).localeCompare(roomCode(b),'ar',{numeric:true})):state.trainers.filter(activeTrainer).sort((a,b)=>a.name.localeCompare(b.name,'ar'));
+  const subjects=isRoom?state.rooms.filter(r=>r.enabled!==false&&roomCode(r)).sort((a,b)=>roomCode(a).localeCompare(roomCode(b),'ar',{numeric:true})):reportMonitoringTrainers().sort((a,b)=>a.name.localeCompare(b.name,'ar'));
   const counts=countAssignments();
+  const ownership=isRoom?null:courseOwnership(exams,distributionPeople(false));
   const prefix=isRoom?"availableRoom":"availableTrainer";
   const selectedDay=$("#"+prefix+"Day")?.value||"";
   const selectedPeriod=Number($("#"+prefix+"Period")?.value||0);
@@ -944,7 +959,7 @@ function availabilityReportHtml(kind){
           if(!periods.includes(p))return '<td><span class="redDash" aria-label="غير متاح"></span></td>';
           const sample={...d,period:p},slot=slotKey(sample);let free=false;
           if(isRoom){const code=roomCode(subject);free=!exams.some(e=>slotKey(e)===slot&&roomCode(roomRecord(e.room))===code);}
-          else{const name=subject.name;free=trainerAvailable(subject,sample)&&!exams.some(e=>slotKey(e)===slot&&(norm(e.inv1)===norm(name)||norm(e.inv2)===norm(name)))&&(!courseTrainerConflict(name,sample)||monitoringOwnExamAllowed(subject))&&num(counts[name],0)<num(subject.max,999)&&!wouldMakeThree(name,sample);}
+          else{const name=subject.name;free=!committeeDepartmentConflict(ownership.byName.get(norm(name)),ownership.slots.get(slot))&&trainerAvailable(subject,sample)&&!exams.some(e=>slotKey(e)===slot&&(norm(e.inv1)===norm(name)||norm(e.inv2)===norm(name)))&&(!courseTrainerConflict(name,sample,ownership)||monitoringOwnExamAllowed(subject))&&num(counts[name],0)<num(subject.max,999)&&!wouldMakeThree(name,sample);}
           return free?'<td class="freeCell">متاح</td>':'<td><span class="redDash" aria-label="غير متاح"></span></td>';
         }).join('');
         return `<tr><td>${esc(d.day)}</td><td><bdi>${esc(displayDate(d.date))}</bdi></td>${cells}</tr>`;
@@ -961,7 +976,7 @@ function availabilityReportHtml(kind){
         const sample={...d,period:p};const slot=slotKey(sample);
         let free=false;
         if(isRoom){const code=roomCode(subject);free=!exams.some(e=>slotKey(e)===slot&&roomCode(roomRecord(e.room))===code);}
-        else{const name=subject.name;free=trainerAvailable(subject,sample)&&!exams.some(e=>slotKey(e)===slot&&(norm(e.inv1)===norm(name)||norm(e.inv2)===norm(name)))&&(!courseTrainerConflict(name,sample)||monitoringOwnExamAllowed(subject))&&num(counts[name],0)<num(subject.max,999)&&!wouldMakeThree(name,sample);}
+        else{const name=subject.name;free=!committeeDepartmentConflict(ownership.byName.get(norm(name)),ownership.slots.get(slot))&&trainerAvailable(subject,sample)&&!exams.some(e=>slotKey(e)===slot&&(norm(e.inv1)===norm(name)||norm(e.inv2)===norm(name)))&&(!courseTrainerConflict(name,sample,ownership)||monitoringOwnExamAllowed(subject))&&num(counts[name],0)<num(subject.max,999)&&!wouldMakeThree(name,sample);}
         return free?'<td class="freeCell">متاح</td>':'<td class="busyCell"><span class="redDash" aria-label="مشغول أو غير متاح"></span></td>';
       }).join('');
       return `<tr><td>${esc(isRoom?roomCode(subject):subject.name)}</td>${cells}</tr>`;
@@ -984,7 +999,7 @@ function showAvailabilityPreview(kind, show) {
 
 function setupAvailabilityFilters(kind){
  const isRoom=kind==="rooms",prefix=isRoom?"availableRoom":"availableTrainer",days=availabilityReportDays();
- const subjects=isRoom?state.rooms.filter(r=>r.enabled!==false&&roomCode(r)).map(roomCode):state.trainers.filter(activeTrainer).map(t=>t.name);
+ const subjects=isRoom?state.rooms.filter(r=>r.enabled!==false&&roomCode(r)).map(roomCode):reportMonitoringTrainers().map(t=>t.name);
  const entries=[['Day',days.map(d=>[dayKey(d),`${d.day} — ${displayDate(d.date)}`]),'جميع الأيام'],['Period',state.periods.map(p=>[String(p.id),p.name]),'جميع الفترات'],['Name',subjects.map(n=>[n,n]),isRoom?'جميع القاعات':'جميع المدربين']];
  for(const [suffix,values,allLabel] of entries){const el=$("#"+prefix+suffix);if(!el)continue;const previous=el.value;el.innerHTML=`<option value="">${allLabel}</option>`+values.map(([v,label])=>`<option value="${esc(v)}">${esc(label)}</option>`).join('');if(values.some(([v])=>v===previous))el.value=previous;el.onchange=()=>showAvailabilityPreview(kind,false);}
 }
@@ -1015,7 +1030,7 @@ function renderReports(){
        <thead><tr><th scope="col">اسم المدرب</th><th scope="col">عدد المراقبات</th></tr></thead>
        <tbody>${items.map(t=>`<tr><th scope="row">${esc(t.name)}</th><td>${c[t.name]||0}</td></tr>`).join("")}</tbody>
      </table></section>`:"";
-   $("#trainerCounts").innerHTML=list("المدربون العاديون",active)+list("القيادات الإشرافية",leaders().map(l=>l.trainer).sort(byLoad))+list("غير النشطين",state.trainers.filter(t=>!activeTrainer(t)).sort(byLoad));
+   $("#trainerCounts").innerHTML=list("المدربون العاديون",active)+list("القيادات الإشرافية",leaders().filter(l=>l.role!==COMMITTEE_ROLE).map(leadershipTrainer).sort(byLoad))+list("أعضاء لجان الاختبار",leaders().filter(l=>l.role===COMMITTEE_ROLE).map(leadershipTrainer).sort(byLoad))+list("غير النشطين",state.trainers.filter(t=>!activeTrainer(t)).sort(byLoad));
  }
 }
 function trainerSheet(name){
@@ -1182,7 +1197,14 @@ function printMonitoringReport(){
 function bindUi(){
  $("#addLeadershipBtn").onclick=()=>{$("#leadershipForm").hidden=!$("#leadershipForm").hidden;};
  $("#leadershipManualToggle").onchange=e=>{$("#leadershipManualFields").hidden=!e.target.checked;$("#leadershipTrainer").disabled=e.target.checked;};
- $("#leadershipSaveBtn").onclick=()=>{try{const manual=$("#leadershipManualToggle").checked;const name=manual?$("#leadershipManualName").value:$("#leadershipTrainer").value;addLeadership(name,$("#leadershipRole").value,$("#leadershipLimit").value,manual?$("#leadershipManualId").value:"");$("#leadershipForm").hidden=true;renderAll();toast("تمت إضافة القيادة الإشرافية بنجاح");}catch(err){notify(err.message,"error");}};
+ $("#leadershipRole").onchange=e=>{
+   const committee=e.target.value===COMMITTEE_ROLE;
+   const manual=$("#leadershipManualToggle");
+   if(committee)manual.checked=false;
+   manual.disabled=committee;
+   manual.onchange({target:manual});
+ };
+ $("#leadershipSaveBtn").onclick=()=>{try{const manual=$("#leadershipManualToggle").checked;const name=manual?$("#leadershipManualName").value:$("#leadershipTrainer").value;addLeadership(name,$("#leadershipRole").value,$("#leadershipLimit").value,manual?$("#leadershipManualId").value:"");$("#leadershipForm").hidden=true;renderAll();toast("تمت الإضافة إلى القيادات ولجان الاختبار");}catch(err){notify(err.message,"error");}};
 
   $("#tabs").onclick=e=>{const b=e.target.closest("button[data-page]");if(!b)return;$$('#tabs button').forEach(x=>x.classList.toggle("active",x===b));$$('.page').forEach(x=>x.classList.toggle("active",x.id===`page-${b.dataset.page}`));if(b.dataset.page==="trainers"){renderTrainers();fitTrainerTextareas();}if(b.dataset.page==="rooms")renderRooms();if(b.dataset.page==="audit")runAudit();if(b.dataset.page==="announcement")renderAnnouncement();if(b.dataset.page==="reports")renderReports();if(b.dataset.page==="schedule")renderSchedule();};
   for(const group of $$(".subtabs"))group.onclick=e=>{const target=e.target.closest("button[data-subtab]");if(!target)return;for(const b of $$("button[data-subtab]",group)){b.classList.toggle("active",b===target);b.setAttribute("aria-selected",b===target?"true":"false");}for(const panel of group.parentElement.querySelectorAll(":scope > .subpanel"))panel.classList.toggle("active",panel.id===target.dataset.subtab);if(group.closest("#page-reports"))renderReports();};

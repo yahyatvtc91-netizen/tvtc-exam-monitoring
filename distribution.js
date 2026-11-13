@@ -7,7 +7,7 @@ let activeDistribution = null;
 function monitoringRoster() {
   return [
     ...state.trainers.map(trainer => ({trainer, max: trainer.max ?? 999, group: null})),
-    ...leaders().map(entry => ({trainer: entry.trainer, max: entry.max, group: leadershipGroup(entry)}))
+    ...leaders().map(entry => ({trainer: entry.trainer, max: entry.max, group: leadershipGroup(entry), committee: entry.role === COMMITTEE_ROLE}))
   ];
 }
 
@@ -39,9 +39,8 @@ function distributionPeople(strict = true) {
     const max = Number(entry.max);
     if (strict && (!Number.isSafeInteger(max) || max < 0)) throw new Error(`الحد الأعلى للمراقب ${trainer.name} غير صالح.`);
     const person = {
-      id, name: trainer.name, trainer, max, group: entry.group, active: activeTrainer(trainer),
-      departments: [...new Set(String(trainer.dept || "").split(/[،,]/)
-        .map(x => norm(normalizeDepartment(x.trim()))).filter(Boolean))]
+      id, name: trainer.name, trainer, max, group: entry.group, committee: entry.committee === true, active: activeTrainer(trainer),
+      departments: departmentKeys(trainer.dept)
     };
     roster.set(id, person);
     byName.set(name, person);
@@ -53,6 +52,17 @@ function distributionPeople(strict = true) {
 function distributionRoomId(value) {
   if (!value) return null;
   return roomCode(roomRecord(value)) || "unknown:" + value;
+}
+
+function departmentKeys(value) {
+  return [...new Set(String(value || "").split(/[،,]/)
+    .map(dept => norm(normalizeDepartment(dept.trim())))
+    .filter(dept => dept && ![norm("غير محدد"), "-", "—"].includes(dept)))];
+}
+
+function committeeDepartmentConflict(person, slot) {
+  return person?.committee === true && (!person.departments.length ||
+    person.departments.some(dept => slot?.departments.has(dept)));
 }
 
 function courseOwnership(working, people) {
@@ -86,8 +96,14 @@ function courseOwnership(working, people) {
     }
     records.set(exam, {owners:[...owners], departments});
     const slot = slotKey(exam);
-    if (!slots.has(slot)) slots.set(slot, {exam, owners:new Set()});
-    for (const owner of owners) slots.get(slot).owners.add(owner);
+    if (!slots.has(slot)) slots.set(slot, {exam, owners:new Set(), departments:new Set()});
+    const context = slots.get(slot);
+    for (const owner of owners) context.owners.add(owner);
+    const examDepartments = departmentKeys(exam.dept);
+    const sourceDepartments = (courseRows.get(norm(exam.section)) || [])
+      .flatMap(row => departmentKeys(row[headers.dept]));
+    for (const dept of examDepartments.length ? examDepartments :
+        sourceDepartments.length ? sourceDepartments : departments) context.departments.add(dept);
   }
   return {slots, records, byName};
 }
@@ -118,6 +134,12 @@ function distributionInput(mode) {
     for (const field of assignmentFields) {
       previous[field] = e[field] ? byName.get(norm(e[field]))?.id || "unknown:" + e[field] : null;
     }
+    if (monitors) for (const field of assignmentFields) {
+      const person = byName.get(norm(e[field]));
+      if (isLocked(e, field) && committeeDepartmentConflict(person, slots.get(slot))) {
+        throw new Error(`تكليف عضو اللجنة ${person.name} مثبت في الشعبة ${e.section} مع وجود اختبار لقسمه أو غياب قسمه. فك التثبيت ثم أعد التوزيع.`);
+      }
+    }
     const n = enrollment.get(norm(e.section));
     return {id:e.id, section:e.section, date, period, slot, home,
       department:norm(normalizeDepartment(e.dept)), owners,
@@ -130,7 +152,8 @@ function distributionInput(mode) {
     const eligible = [];
     if (monitors && p.active && p.max > 0) for (const [slot, context] of slots) {
       const own = context.owners.has(p.id);
-      if (trainerAvailable(trainer, context.exam) && (!own || monitoringOwnExamAllowed(trainer))) eligible.push(slot);
+      if (!committeeDepartmentConflict(p, context) && trainerAvailable(trainer, context.exam) &&
+          (!own || monitoringOwnExamAllowed(trainer))) eligible.push(slot);
     }
     return {...entry, eligible};
   });

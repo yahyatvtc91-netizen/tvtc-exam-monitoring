@@ -101,7 +101,7 @@
 
     <section id="page-availability" class="page">
       <div class="sectionHead"><div><h2>تفريغ الفترات</h2><p>الخانة الفارغة = متاح، وX = غير متاح. ثبّت المدرب من القائمة إذا أردت إبقاء تفريغه عند إعادة التعيين.</p></div><button id="resetAvailabilityBtn">إعادة تعيين التفريغ عدا المثبت</button></div>
-      <div class="subtabs" role="tablist" aria-label="أقسام تفريغ الفترات"><button type="button" class="active" data-subtab="availability-edit">تحرير التفريغ</button><button type="button" data-subtab="availability-summary">قائمة المفرغين</button><button type="button" data-subtab="availability-leadership">القيادات الإشرافية</button></div>
+      <div class="subtabs" role="tablist" aria-label="أقسام تفريغ الفترات"><button type="button" class="active" data-subtab="availability-edit">تحرير التفريغ</button><button type="button" data-subtab="availability-summary">قائمة المفرغين</button><button type="button" data-subtab="availability-leadership">القيادات الإشرافية ولجان الاختبار</button></div>
       <div id="availability-edit" class="subpanel active">
       <div class="filters"><label for="availabilityTrainer">المدرب <select id="availabilityTrainer"></select></label></div>
       <div id="availabilityGrid" class="availabilityGrid"></div>
@@ -111,17 +111,17 @@
       <div class="tableWrap"><table id="availabilitySummary"><thead><tr><th>المدرب</th><th>الرقم الوظيفي</th><th>تفاصيل التفريغ</th><th>تثبيت التفريغ</th></tr></thead><tbody></tbody></table></div>
       </div>
       <div id="availability-leadership" class="subpanel">
-       <div class="sectionHead"><h3>القيادات الإشرافية</h3><button id="addLeadershipBtn" type="button" class="primary">+ إضافة قيادة إشرافية</button></div>
+       <div class="sectionHead"><h3>القيادات الإشرافية ولجان الاختبار</h3><button id="addLeadershipBtn" type="button" class="primary">+ إضافة قيادة أو عضو لجنة</button></div>
        <div id="leadershipForm" class="card" hidden>
         <label>اسم المدرب <select id="leadershipTrainer"></select></label>
         <label><input type="checkbox" id="leadershipManualToggle"> الاسم غير موجود — إدخال يدوي</label>
         <div id="leadershipManualFields" hidden><label>الاسم <input id="leadershipManualName" type="text"></label><label>الرقم الوظيفي (اختياري) <input id="leadershipManualId" type="text"></label></div>
-        <label>المنصب <select id="leadershipRole"><option>عميد</option><option>وكيل تدريب</option><option>وكيل متدربين</option><option>وكيل جودة</option><option>عضو إرشاد</option></select></label>
+        <label>المنصب <select id="leadershipRole"><option>عميد</option><option>وكيل تدريب</option><option>وكيل متدربين</option><option>وكيل جودة</option><option>عضو إرشاد</option><option>عضو لجنة</option></select></label>
         <label>الحد الأعلى للمراقبات <input id="leadershipLimit" type="number" min="0" value="3"></label>
         <button type="button" id="leadershipSaveBtn" class="primary">حفظ</button>
        </div>
-       <div class="tableWrap"><table id="leadershipTable"><thead><tr><th>الاسم</th><th>الرقم الوظيفي</th><th>المنصب</th><th>الحد الأعلى</th><th>المسند</th><th>إجراء</th></tr></thead><tbody></tbody></table></div>
-       <p>بعد ضمان أقصى تغطية، يعطي النظام القيادات أولوية التكليف ضمن سقف كل شخص، مع تفضيل الفترة الثالثة. يمنع تزامن العميد والوكلاء مع بعضهم، ويمنع تزامن أعضاء الإرشاد.</p>
+       <div class="tableWrap"><table id="leadershipTable"><thead><tr><th>الاسم</th><th>الرقم الوظيفي</th><th>المنصب</th><th>القسم</th><th>الحد الأعلى</th><th>المسند</th><th>إجراء</th></tr></thead><tbody></tbody></table></div>
+       <p>بعد ضمان أقصى تغطية، يعطي النظام القيادات أولوية التكليف ضمن سقف كل شخص، مع تفضيل الفترة الثالثة. يمنع تزامن العميد والوكلاء مع بعضهم، ويمنع تزامن أعضاء الإرشاد.</p><p>يُكلّف عضو اللجنة ضمن حده الأعلى، ويُستبعد من المراقبة في أي فترة فيها اختبار لقسمه.</p>
       </div>
     </section>
 
@@ -203,8 +203,8 @@
   <div id="toast" class="toast"></div>
   <script src="vendor/highs-runtime.js"></script>
   <script src="optimizer.js?v=5.5.3"></script>
-  <script src="distribution.js?v=5.5.3"></script>
-  <script src="app.js?v=5.5.3"></script>
+  <script src="distribution.js?v=5.5.4"></script>
+  <script src="app.js?v=5.5.4"></script>
   <script src="identity.js?v=5.5.2"></script>
 </body>
 </html>
