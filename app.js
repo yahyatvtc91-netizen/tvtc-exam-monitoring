@@ -280,6 +280,7 @@ function findReplacement(ex) {
     (counts[a.trainer.name]||0)-(counts[b.trainer.name]||0) || a.trainer.name.localeCompare(b.trainer.name,"ar"));
   if (!candidates.length) return false;
   ex[field] = candidates[0].trainer.name;
+  if(ex.manualMonitors)delete ex.manualMonitors[field];
   saveSoon();renderSchedule();renderReports();runAudit();
   return true;
 }
@@ -589,56 +590,49 @@ function manualMonitorContext() {
   const exams = eligibleExams();
   return {exams, ownership:courseOwnership(exams,distributionPeople(false))};
 }
-function monitorAvailabilityIssue(person,exam,field,{exams,ownership}) {
-  if (!person?.active) return "المراقب غير نشط أو غير معروف.";
-  const slot=slotKey(exam);
-  if (committeeDepartmentConflict(person,ownership.slots.get(slot))) {
-    return "عضو اللجنة غير متاح للمراقبة عند وجود اختبار لقسمه أو غياب قسمه.";
-  }
-  if (!trainerAvailable(person.trainer,exam)) return "المراقب مفرغ في هذه الفترة.";
-  const target=norm(person.name);
-  for (const e of exams) {
-    if (slotKey(e)!==slot) continue;
-    for (const f of assignmentFields) {
-      if (e===exam&&f===field || !e[f]) continue;
-      const other=norm(e[f]);
-      if (other===target) return "للمراقب تكليف آخر في الفترة نفسها.";
-      if (person.group&&ownership.byName.get(other)?.group===person.group) {
-        return "هذا التكليف يتعارض مع قيادة أخرى في الفترة نفسها.";
-      }
-    }
-  }
-  return "";
+function monitorAssignmentConflict(person,exam,field,exams) {
+  const target=norm(person.name), slot=slotKey(exam);
+  return exams.some(e=>slotKey(e)===slot&&assignmentFields.some(f=>
+    !(e===exam&&f===field)&&norm(e[f])===target));
 }
-function manualMonitorIssue(name,exam,field,context) {
-  if (!name) return "";
-  context ||= manualMonitorContext();
-  const {exams,ownership}=context;
-  const target=norm(name), person=ownership.byName.get(target);
-  const availabilityIssue=monitorAvailabilityIssue(person,exam,field,context);
-  if (availabilityIssue) return availabilityIssue;
-  if (!monitoringOwnExamAllowed(person.trainer)&&ownership.slots.get(slotKey(exam))?.owners.has(person.id)) {
-    return "للمراقب اختبار مقرر في الفترة نفسها وفق الإعداد الحالي.";
+function monitorAssignmentWarnings(person,exam,field,{exams,ownership}) {
+  const warnings=[];
+  const slot=slotKey(exam), scheduled=ownership.slots.get(slot);
+  if(!person.active) warnings.push("المدرب غير نشط");
+  if(!trainerAvailable(person.trainer,exam)) warnings.push("المراقب مفرغ في هذه الفترة أو اليوم");
+  if(committeeDepartmentConflict(person,scheduled)) {
+    warnings.push(person.departments.length?"لقسم عضو اللجنة اختبار في هذه الفترة":"قسم عضو اللجنة غير محدد");
   }
-  let count=0;
+  if(!monitoringOwnExamAllowed(person.trainer)&&scheduled?.owners.has(person.id)) {
+    warnings.push("للمراقب اختبار مقرر في الفترة نفسها وسياسة اختبار المقرر تمنع تكليفه آليًا");
+  }
+  if(person.group&&exams.some(e=>slotKey(e)===slot&&assignmentFields.some(f=>
+    !(e===exam&&f===field)&&ownership.byName.get(norm(e[f]))?.group===person.group))) {
+    warnings.push("هناك قيادي آخر من المجموعة نفسها مكلّف في هذه الفترة");
+  }
+  if(monitorExceedsCap(person,exam,field,exams)) warnings.push(`تجاوز المراقب حده الأعلى (${person.max})`);
+  if(wouldMakeThree(person.name,exam,field)) warnings.push("أصبح للمراقب ثلاث فترات متتالية في هذا اليوم");
+  return warnings;
+}
+function monitorExceedsCap(person,exam,field,exams) {
+  const target=norm(person.name);
+  let count=1;
   for (const e of exams) for (const f of assignmentFields) {
-    if (e===exam&&f===field || norm(e[f])!==target) continue;
-    count++;
+    if (!(e===exam&&f===field) && norm(e[f])===target) count++;
   }
-  if (count>=person.max) return "بلغ المراقب حده الأعلى.";
-  return "";
+  return count>person.max;
 }
 function eligibleMonitorChoices(exam,field) {
   const context=manualMonitorContext();
   return [...context.ownership.byName.values()]
-    .filter(person=>!manualMonitorIssue(person.name,exam,field,context)&&
-      !wouldMakeThree(person.name,exam,field));
+    .filter(person=>!monitorAssignmentConflict(person,exam,field,context.exams)&&
+      !monitorAssignmentWarnings(person,exam,field,context).length);
 }
 function scheduleMonitorOptions(exam,field) {
   const selected=exam[field]||"";
   const context=manualMonitorContext();
   const choices=[...context.ownership.byName.values()]
-    .filter(person=>!monitorAvailabilityIssue(person,exam,field,context)).map(person=>person.name)
+    .map(person=>person.name)
     .sort((a,b)=>a.localeCompare(b,"ar"));
   const current=selected&&!choices.includes(selected)
     ? `<option value="${esc(selected)}" disabled>${esc(selected)} (التكليف الحالي غير متاح)</option>` : "";
@@ -652,11 +646,14 @@ function clearOwnExamMonitoring(t,ownership) {
   const working=eligibleExams();
   const context=ownership||courseOwnership(working,distributionPeople(false));
   for (const e of working) {
-    const matches=assignmentFields.filter(field=>!isLocked(e,field)&&norm(e[field])===norm(t.name));
+    const matches=assignmentFields.filter(field=>!isLocked(e,field)&&!isManualMonitor(e,field)&&norm(e[field])===norm(t.name));
     if (!matches.length||!courseTrainerConflict(t.name,e,context)) continue;
     for (const field of matches) {e[field]="";cleared++;}
   }
   return cleared;
+}
+function isManualMonitor(exam,field) {
+  return Boolean(exam[field]&&exam.manualMonitors?.[field]===exam[field]);
 }
 function clearUnavailableAssignments() {
   const byName=new Map(allMonitoringTrainers().map(t=>[norm(t.name),t]));
@@ -664,14 +661,14 @@ function clearUnavailableAssignments() {
   for (const e of state.exams) for (const field of assignmentFields) {
     if (!e[field]||isLocked(e,field)) continue;
     const t=byName.get(norm(e[field]));
-    if (!t||!activeTrainer(t)||!trainerAvailable(t,e)) {e[field]="";removed++;}
+    if (!t||(!isManualMonitor(e,field)&&(!activeTrainer(t)||!trainerAvailable(t,e)))) {e[field]="";removed++;}
   }
   return removed;
 }
 function removeInactiveAssignments(){return clearUnavailableAssignments();}
 function refreshAfterAvailabilityChange(){const removed=clearUnavailableAssignments();saveSoon();renderAvailabilitySummary();renderSchedule();renderReports();runAudit();if(removed)toast(`أُزيل ${removed} إسناد غير متاح؛ الخانة تنتظر مراقبًا`,"warning");}
 function stripDistributionNote(notes){return String(notes||"").split(/\s*؛\s*/).filter(x=>x&&!/^عجز في المراقبين/.test(x)&&!/^مدرب المقرر .* مفرغ للمتابعة$/.test(x)&&!/^أُلغي تكليف (مراقب بسبب عدم التوفر|مدرب غير نشط)$/.test(x)).join("؛ ");}
-function resetMonitors(){let cleared=0;for(const e of state.exams){for(const field of ["inv1","inv2"].filter(f=>!isLocked(e,f)))if(e[field]){e[field]="";cleared++;}e.notes=stripDistributionNote(e.notes);}saveSoon();if(typeof document!=="undefined"){renderAll();runAudit();toast(`أُزيل ${cleared} إسناد مع إبقاء المثبت`);}return cleared;}
+function resetMonitors(){let cleared=0;for(const e of state.exams){for(const field of ["inv1","inv2"].filter(f=>!isLocked(e,f)))if(e[field]){e[field]="";if(e.manualMonitors)delete e.manualMonitors[field];cleared++;}e.notes=stripDistributionNote(e.notes);}saveSoon();if(typeof document!=="undefined"){renderAll();runAudit();toast(`أُزيل ${cleared} إسناد مع إبقاء المثبت`);}return cleared;}
 function joinNote(a,b){return a?`${a}؛ ${b}`:b;}
 
 function runAudit(){
@@ -703,16 +700,16 @@ function runAudit(){
     if(!e.inv1||!e.inv2)rows.push(["خطأ",e.inv1||e.inv2?"نقص مراقب":"المراقبان غير معينين",`${e.course} — شعبة ${e.section} — ${e.day} الفترة ${e.period} — ${e.inv1?"مراقب ١ فقط":e.inv2?"مراقب ٢ فقط":"لا يوجد مراقبان"}`,"المدربون"]);
     if(e.inv1&&e.inv1===e.inv2)rows.push(["خطأ","تكرار المراقب",`${e.inv1} في الشعبة ${e.section}`,"المدربون"]);
     for(const n of [e.inv1,e.inv2])if(n){const name=norm(n);counts.set(name,(counts.get(name)||0)+1);const k=`${slotKey(e)}|${name}`;if(seen.has(k))rows.push(["خطأ","تعارض مراقب",`${n} في ${e.day} الفترة ${e.period}`,"المدربون"]);else seen.set(k,true);
-      const t=people.get(name)?.trainer;if(!t||!activeTrainer(t))rows.push(["خطأ","مدرب غير نشط أو غير معروف",`${n} — شعبة ${e.section}`,"المدربون"]);
-      if(committeeDepartmentConflict(ownership.byName.get(name),ownership.slots.get(slotKey(e))))rows.push(["خطأ",COMMITTEE_CONFLICT,`${n} — ${e.day} الفترة ${e.period} — يوجد اختبار للقسم أو لم يُحدد قسم العضو`,"المدربون"]);
-      if(t&&!trainerAvailable(t,e))rows.push(["خطأ","مخالفة التفريغ",`${n} في ${e.day} الفترة ${e.period}`,"المدربون"]);
-      if(t&&!monitoringOwnExamAllowed(t)&&courseTrainerConflict(n,e,ownership))rows.push(["خطأ","مدرب مقرر لديه اختبار",`${n} في ${e.day} الفترة ${e.period}`,"المدربون"]);
+      const t=people.get(name)?.trainer;if(!t||!activeTrainer(t))rows.push([t?"تحذير":"خطأ","مدرب غير نشط أو غير معروف",`${n} — شعبة ${e.section}`,"المدربون"]);
+      if(committeeDepartmentConflict(ownership.byName.get(name),ownership.slots.get(slotKey(e))))rows.push(["تحذير",COMMITTEE_CONFLICT,`${n} — ${e.day} الفترة ${e.period} — يوجد اختبار للقسم أو لم يُحدد قسم العضو`,"المدربون"]);
+      if(t&&!trainerAvailable(t,e))rows.push(["تحذير","مخالفة التفريغ",`${n} في ${e.day} الفترة ${e.period}`,"المدربون"]);
+      if(t&&!monitoringOwnExamAllowed(t)&&courseTrainerConflict(n,e,ownership))rows.push(["تحذير","مدرب مقرر لديه اختبار",`${n} في ${e.day} الفترة ${e.period}`,"المدربون"]);
     }
     for(let i=rowStart;i<rows.length;i++)rows[i][4]=e.id;
   }
   for (const {trainer:t,max} of roster) {
     const count=counts.get(norm(t.name))||0;
-    if (count>Number(max)) rows.push(["خطأ","تجاوز الحد الأعلى",`${t.name}: ${count} من ${max}`,"المدربون"]);
+    if (count>Number(max)) rows.push(["تحذير","تجاوز الحد الأعلى",`${t.name}: ${count} من ${max}`,"المدربون"]);
     if (!count) continue;
     const byDay=new Map();
     for (const e of assignmentsFor(t.name)) {
@@ -728,7 +725,7 @@ function runAudit(){
   }
   for (const issue of leadershipConflicts()) {
     const [date,period]=issue.slot.split("|");
-    rows.push(["خطأ","تعارض قيادات",`${displayDate(date)}، الفترة ${period}: ${issue.names.join("، ")}`,"المدربون"]);
+    rows.push(["تحذير","تعارض قيادات",`${displayDate(date)}، الفترة ${period}: ${issue.names.join("، ")}`,"المدربون"]);
   }
   const expected=eligibleSections(),scheduled=new Set(working.map(e=>norm(e.section)).filter(Boolean));
   if(!state.ss01.length)rows.push(["تحذير","بيانات SS01 غير مستوردة","استورد تقرير SS01 أولًا","الشعب"]);
@@ -926,11 +923,19 @@ function renderSchedule(){
     else if(assignmentFields.includes(x.dataset.f)){
       x.disabled=isLocked(e,x.dataset.f);
       x.onchange=()=>{
-        const issue=manualMonitorIssue(x.value,e,x.dataset.f);
-        if(issue){notifyError(issue);x.value=e[x.dataset.f];return;}
-        const warning=x.value&&wouldMakeThree(x.value,e,x.dataset.f);
-        e[x.dataset.f]=x.value;saveSoon();renderSchedule();renderReports();runAudit();
-        if(warning)notify("تم حفظ الإسناد اليدوي. أصبح للمراقب ثلاث فترات متتالية في هذا اليوم.","warning");
+        const context=manualMonitorContext(), field=x.dataset.f;
+        const person=context.ownership.byName.get(norm(x.value));
+        if(x.value&&(!person||monitorAssignmentConflict(person,e,field,context.exams))){
+          notifyError(person?"للمراقب تكليف آخر في الفترة نفسها.":"المراقب غير معروف.");
+          x.value=e[field]||"";
+          return;
+        }
+        const warnings=person?monitorAssignmentWarnings(person,e,field,context):[];
+        e[field]=x.value;
+        if(person)(e.manualMonitors??={})[field]=x.value;
+        else if(e.manualMonitors)delete e.manualMonitors[field];
+        saveSoon();renderSchedule();renderReports();runAudit();
+        if(warnings.length)notify(`تم حفظ الإسناد اليدوي. ${warnings.join("، ")}.`,"warning");
       };
     }
     else if(x.dataset.f==="room"){x.disabled=isLocked(e,"room");x.onchange=()=>{e.room=x.value;saveSoon();renderSchedule();renderReports();runAudit();};}
@@ -1067,14 +1072,14 @@ function renderReports(){
    const c=countAssignments(), byLoad=(a,b)=>(c[b.name]||0)-(c[a.name]||0)||a.name.localeCompare(b.name,"ar");
    const active=state.trainers.filter(activeTrainer).sort(byLoad);
    const total=active.reduce((n,t)=>n+(c[t.name]||0),0), average=active.length?total/active.length:0;
-   $("#trainerAverage").textContent=active.length?`متوسط المراقبات للمدربين العاديين النشطين: ${average.toFixed(2)} (${total} مراقبة ÷ ${active.length} مدربًا)`:"لا يوجد مدربون عاديون نشطون";
+   $("#trainerAverage").textContent=active.length?`متوسط المراقبات للمدربين النشطين: ${average.toFixed(2)} (${total} مراقبة ÷ ${active.length} مدربًا)`:"لا يوجد مدربون نشطون";
    const list=(title,items)=>items.length?`<section class="countGroup">
      <h4 class="countGroupTitle">${title}</h4>
      <table aria-label="${title}">
        <thead><tr><th scope="col">اسم المدرب</th><th scope="col">عدد المراقبات</th></tr></thead>
        <tbody>${items.map(t=>`<tr><th scope="row">${esc(t.name)}</th><td>${c[t.name]||0}</td></tr>`).join("")}</tbody>
      </table></section>`:"";
-   $("#trainerCounts").innerHTML=list("المدربون العاديون",active)+list("القيادات الإشرافية",leaders().filter(l=>l.role!==COMMITTEE_ROLE).map(leadershipTrainer).sort(byLoad))+list("أعضاء لجان الاختبار",leaders().filter(l=>l.role===COMMITTEE_ROLE).map(leadershipTrainer).sort(byLoad))+list("غير النشطين",state.trainers.filter(t=>!activeTrainer(t)).sort(byLoad));
+   $("#trainerCounts").innerHTML=list("المدربون",active)+list("القيادات الإشرافية",leaders().filter(l=>l.role!==COMMITTEE_ROLE).map(leadershipTrainer).sort(byLoad))+list("أعضاء لجان الاختبار",leaders().filter(l=>l.role===COMMITTEE_ROLE).map(leadershipTrainer).sort(byLoad))+list("غير النشطين",state.trainers.filter(t=>!activeTrainer(t)).sort(byLoad));
  }
 }
 function trainerSheet(name){

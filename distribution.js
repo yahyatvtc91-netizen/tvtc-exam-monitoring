@@ -332,6 +332,11 @@ async function runOptimizedDistribution(mode) {
         edits.push([field, value]);
       }
       if (mode !== "rooms") {
+        if(exam.manualMonitors) {
+          const manualMonitors={...exam.manualMonitors};
+          for(const field of assignmentFields)if(!e.pins[field])delete manualMonitors[field];
+          edits.push(["manualMonitors",manualMonitors]);
+        }
         const notes = stripDistributionNote(exam.notes);
         edits.push(["notes", solved.inv1 && solved.inv2 ? notes : joinNote(notes, "عجز في المراقبين وفق القيود الحالية")]);
       }
