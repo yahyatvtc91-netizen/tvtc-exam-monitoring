@@ -589,32 +589,43 @@ function manualMonitorContext() {
   const exams = eligibleExams();
   return {exams, ownership:courseOwnership(exams,distributionPeople(false))};
 }
-function manualMonitorIssue(name,exam,field,context) {
-  if (!name) return "";
-  const {exams,ownership} = context || manualMonitorContext();
-  const target = norm(name), person = ownership.byName.get(target);
+function monitorAvailabilityIssue(person,exam,field,{exams,ownership}) {
   if (!person?.active) return "المراقب غير نشط أو غير معروف.";
-  const slot = slotKey(exam), slotContext = ownership.slots.get(slot);
-  if (committeeDepartmentConflict(person,slotContext)) {
+  const slot=slotKey(exam);
+  if (committeeDepartmentConflict(person,ownership.slots.get(slot))) {
     return "عضو اللجنة غير متاح للمراقبة عند وجود اختبار لقسمه أو غياب قسمه.";
   }
   if (!trainerAvailable(person.trainer,exam)) return "المراقب مفرغ في هذه الفترة.";
-  if (!monitoringOwnExamAllowed(person.trainer)&&slotContext?.owners.has(person.id)) {
+  const target=norm(person.name);
+  for (const e of exams) {
+    if (slotKey(e)!==slot) continue;
+    for (const f of assignmentFields) {
+      if (e===exam&&f===field || !e[f]) continue;
+      const other=norm(e[f]);
+      if (other===target) return "للمراقب تكليف آخر في الفترة نفسها.";
+      if (person.group&&ownership.byName.get(other)?.group===person.group) {
+        return "هذا التكليف يتعارض مع قيادة أخرى في الفترة نفسها.";
+      }
+    }
+  }
+  return "";
+}
+function manualMonitorIssue(name,exam,field,context) {
+  if (!name) return "";
+  context ||= manualMonitorContext();
+  const {exams,ownership}=context;
+  const target=norm(name), person=ownership.byName.get(target);
+  const availabilityIssue=monitorAvailabilityIssue(person,exam,field,context);
+  if (availabilityIssue) return availabilityIssue;
+  if (!monitoringOwnExamAllowed(person.trainer)&&ownership.slots.get(slotKey(exam))?.owners.has(person.id)) {
     return "للمراقب اختبار مقرر في الفترة نفسها وفق الإعداد الحالي.";
   }
   let count=0;
   const date=dayKey(exam), periods=new Set([Number(exam.period)]);
   for (const e of exams) for (const f of assignmentFields) {
-    if (e===exam&&f===field || !e[f]) continue;
-    const other=norm(e[f]);
-    if (other===target) {
-      count++;
-      if (slotKey(e)===slot) return "للمراقب تكليف آخر في الفترة نفسها.";
-      if (dayKey(e)===date) periods.add(Number(e.period));
-    }
-    if (person.group&&ownership.byName.get(other)?.group===person.group&&slotKey(e)===slot) {
-      return "هذا التكليف يتعارض مع قيادة أخرى في الفترة نفسها.";
-    }
+    if (e===exam&&f===field || norm(e[f])!==target) continue;
+    count++;
+    if (dayKey(e)===date) periods.add(Number(e.period));
   }
   if (count>=person.max) return "بلغ المراقب حده الأعلى.";
   if (hasConsecutiveTriple(periods)) return "هذا التكليف يؤدي إلى ثلاث فترات متتالية، والحد المسموح فترتان متتاليتان.";
@@ -627,7 +638,9 @@ function eligibleMonitorChoices(exam,field) {
 }
 function scheduleMonitorOptions(exam,field) {
   const selected=exam[field]||"";
-  const choices=eligibleMonitorChoices(exam,field).map(person=>person.name)
+  const context=manualMonitorContext();
+  const choices=[...context.ownership.byName.values()]
+    .filter(person=>!monitorAvailabilityIssue(person,exam,field,context)).map(person=>person.name)
     .sort((a,b)=>a.localeCompare(b,"ar"));
   const current=selected&&!choices.includes(selected)
     ? `<option value="${esc(selected)}" disabled>${esc(selected)} (التكليف الحالي غير متاح)</option>` : "";
