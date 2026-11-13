@@ -1113,7 +1113,7 @@ function announcementTimeHtml(value){
   });
   return rendered.join(' <span aria-hidden="true">—</span> ');
 }
-function announcementSheets(onlyDate="", paginated=false){
+function announcementSheets(onlyDate=""){
   const sections=eligibleSections(),groups=new Map();
   for(const e of eligibleExams()){
     if(onlyDate&&westernDigits(e.date)!==westernDigits(onlyDate))continue;
@@ -1124,38 +1124,22 @@ function announcementSheets(onlyDate="", paginated=false){
   }
   const ordered=[...groups].sort((a,b)=>a[0].localeCompare(b[0],"ar",{numeric:true}));
   return ordered.map(([,group])=>{
-    const periods=[1,2,3];
-    const pageColumns=[];
-    const columns=periods.map(period=>{
+    const columns=[1,2,3].map(period=>{
       const p=state.periods.find(x=>Number(x.id)===period);
       const unique=new Set();
       const rows=group.rows.filter(e=>Number(e.period)===period).sort((a,b)=>String(a.course).localeCompare(String(b.course),"ar")||String(a.section).localeCompare(String(b.section),"ar",{numeric:true})).filter(e=>{
         const key=[norm(e.courseCode||sections.get(norm(e.section))?.code||e.course),norm(e.section)].join("|");
         if(unique.has(key))return false;unique.add(key);return true;
       });
-      const cells=rows.map((e,index)=>{
+      const cells=rows.map(e=>{
         const code=e.courseCode||sections.get(norm(e.section))?.code||"—";
         const room=validRoomLabel(e.room)||"غير محددة";
         return `<tr><td>${esc(code)}</td><td>${esc(e.course||"—")}</td><td><bdi>${esc(e.section||"—")}</bdi></td><td class="${room==='غير محددة'?'missingRoom':''}"><bdi>${esc(room)}</bdi></td><td>${esc(e.courseTrainer||"غير محدد")}</td></tr>`;
       });
-      pageColumns.push({period,rows,cells,p});
-      return `<div class="periodPanel period${period}"><div class="periodHeading">${esc(p?.name||`الفترة ${["","الأولى","الثانية","الثالثة"][period]}`)}</div><div class="periodTime">${announcementTimeHtml(p?.time||(rows.length?periodTime(rows[0]):"غير محدد"))}</div><table><thead><tr><th>رمز المقرر</th><th>اسم المقرر</th><th>الشعبة</th><th>القاعة</th><th>اسم المدرب</th></tr></thead><tbody>${cells.join('')||'<tr><td colspan="5" class="emptyPeriod">لا توجد اختبارات</td></tr>'}</tbody></table></div>`;
+      return `<div class="periodPanel period${period}"><div class="periodHeading">${esc(p?.name||`الفترة ${["","الأولى","الثانية","الثالثة"][period]}`)}</div><div class="periodTime">${announcementTimeHtml(p?.time||(rows.length?periodTime(rows[0]):"غير محدد"))}</div><table><thead><tr><th>رمز المقرر</th><th>اسم المقرر</th><th>الشعبة</th><th>القاعة</th><th>اسم المدرب</th></tr></thead><tbody>${cells.join("")||'<tr><td colspan="5" class="emptyPeriod">لا توجد اختبارات</td></tr>'}</tbody></table></div>`;
     }).join("");
-    const buildPage=(pageNumber, panels, lastPage)=>`<section class="announcementSheet"><div class="announcementMasthead"><div class="announcementBrand"><span>المؤسسة العامة للتدريب التقني والمهني</span><small>الكلية التقنية التطبيقية بالرياض</small></div><div class="announcementTitle"><span class="titleMark">☷</span> جدول الاختبارات النهائية للمتدربين</div></div>${state.meta.announcementTerm?.trim()?`<p class="announcementTerm">الفصل التدريبي: ${esc(state.meta.announcementTerm.trim())}</p>`:""}<div class="announcementDay"><strong>اليوم: ${esc(group.day)}</strong><strong>التاريخ: <bdi>${esc(displayDate(group.date)||"غير محدد")}</bdi></strong></div><div class="periodGrid">${panels}</div>${lastPage?announcementInstructionsHtml():""}</section>`;
-    if(paginated){
-      // Fixed, conservative row budget: each printed sheet is a self-contained day page.
-      // Avoid relying on the browser to split the three independent columns.
-      const rowsPerPage=6;
-      const totalPages=Math.max(1,...pageColumns.map(x=>Math.ceil(x.cells.length/rowsPerPage)));
-      return Array.from({length:totalPages},(_,i)=>{
-        const panels=pageColumns.map(({period,cells,p})=>{
-          const chunk=cells.slice(i*rowsPerPage,(i+1)*rowsPerPage).join("");
-          return `<div class="periodPanel period${period}"><div class="periodHeading">${esc(p?.name||`الفترة ${["","الأولى","الثانية","الثالثة"][period]}`)}</div><div class="periodTime">${announcementTimeHtml(p?.time||"غير محدد")}</div><table><thead><tr><th>رمز المقرر</th><th>اسم المقرر</th><th>الشعبة</th><th>القاعة</th><th>اسم المدرب</th></tr></thead><tbody>${chunk||'<tr><td colspan="5" class="emptyPeriod">—</td></tr>'}</tbody></table></div>`;
-        }).join("");
-        return buildPage(i+1,panels,i===totalPages-1);
-      }).join("");
-    }
     return `<section class="announcementSheet"><div class="announcementMasthead"><div class="announcementBrand"><span>المؤسسة العامة للتدريب التقني والمهني</span><small>الكلية التقنية التطبيقية بالرياض</small></div><div class="announcementTitle"><span class="titleMark">☷</span> جدول الاختبارات النهائية للمتدربين</div></div>${state.meta.announcementTerm?.trim()?`<p class="announcementTerm">الفصل التدريبي: ${esc(state.meta.announcementTerm.trim())}</p>`:""}<div class="announcementDay"><strong>اليوم: ${esc(group.day)}</strong><strong>التاريخ: <bdi>${esc(displayDate(group.date)||"غير محدد")}</bdi></strong></div><div class="periodGrid">${columns}</div>${announcementInstructionsHtml()}</section>`;
+
   }).join("");
 }
 function renderAnnouncement(){
@@ -1164,33 +1148,79 @@ function renderAnnouncement(){
   const daySelect=$("#announcementDate"),old=daySelect.value,dates=new Map();
   for(const e of eligibleExams())if(e.date)dates.set(westernDigits(e.date),`${e.day||"اليوم"} — ${displayDate(e.date)}`);
   daySelect.innerHTML='<option value="">اختر التاريخ</option>'+[...dates].sort((a,b)=>a[0].localeCompare(b[0],"ar",{numeric:true})).map(([date,label])=>`<option value="${esc(date)}">${esc(label)}</option>`).join("");
-  if(dates.has(old))daySelect.value=old;
-  previewAnnouncement();
+  daySelect.value=dates.has(old)?old:(daySelect.options[1]?.value||"");
+  if($("#page-announcement").classList.contains("active"))previewAnnouncement();
 }
-const announcementPrintCss=`@page{size:A4 landscape;margin:9mm}*{box-sizing:border-box}html{direction:rtl}body{font-family:Tahoma,Arial,sans-serif;direction:rtl;color:#172e39;margin:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.announcementSheet{max-width:279mm;margin-inline:auto;background:#fff;padding:12px 14px 22px;break-before:auto;page-break-before:auto;position:relative;overflow:visible}.announcementSheet+.announcementSheet{break-before:page;page-break-before:always}.announcementSheet:before{content:"";position:absolute;top:0;left:0;width:175px;height:60px;background:linear-gradient(135deg,#008f99 0 34%,#08647a 34% 58%,#d6e9ef 58% 72%,transparent 72%);pointer-events:none}.announcementMasthead{padding-top:5px}.announcementBrand{text-align:right;margin-right:6px;font-weight:800;font-size:16px;color:#111e26;line-height:1.55;min-height:60px}.announcementBrand small{display:block;font-size:13px;color:#245663}.announcementTitle{margin:7px auto 9px;max-width:850px;background:linear-gradient(100deg,#00616e,#00818a,#034f63);border:5px solid #e2f0f3;border-radius:42px;text-align:center;color:white;font-size:18px;font-weight:800;padding:7px 10px;box-shadow:0 3px 0 #c8e2e7}.titleMark{display:inline-block;border:2px solid #d5f1f4;border-radius:8px;padding:0px 8px;margin-left:10px;font-size:25px}.announcementTerm{display:table;text-align:center;margin:0 auto 16px;padding:9px 32px;border-radius:40px;background:#e0eff3;color:#162f38;font-size:17px;font-weight:800}.announcementDay{display:flex;justify-content:center;gap:18px;align-items:center;background:#eaf0f4;border-radius:14px;padding:12px;margin:0 0 18px;font-size:13px;color:#172c35}.announcementDay strong{font-weight:800}.announcementDay bdi,.periodTime bdi{direction:ltr;unicode-bidi:isolate}.periodGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));direction:rtl;gap:9px;align-items:start}.periodPanel{border:2px solid var(--period-border);border-radius:14px;overflow:visible;min-width:0;break-inside:auto;page-break-inside:auto;background:#fff}.period1{--period-border:#078749;--period-light:#dff4e9;--period-deep:#08733e}.period2{--period-border:#ed8a0b;--period-light:#fff0d9;--period-deep:#c96c05}.period3{--period-border:#117fcb;--period-light:#e0f0fc;--period-deep:#0c63a8}.periodHeading{background:linear-gradient(110deg,var(--period-border),var(--period-deep));color:white;text-align:center;font-size:13px;font-weight:800;padding:4px 3px}.periodTime{text-align:center;background:var(--period-light);padding:6px;font-weight:800;font-size:15px;margin:5px;border-radius:8px}.periodPanel table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px;direction:rtl;margin:9px 0 0}.periodPanel th,.periodPanel td{border:1px solid #b9cbd1;padding:5px 2px;text-align:center;vertical-align:middle;overflow-wrap:anywhere;word-break:normal;white-space:normal;line-height:1.65}.periodPanel th{background:var(--period-light);font-weight:800;font-size:10px}.periodPanel th:nth-child(1){width:21%}.periodPanel th:nth-child(2){width:25%}.periodPanel th:nth-child(3){width:14%}.periodPanel th:nth-child(4){width:19%}.periodPanel th:nth-child(5){width:21%}.periodPanel td:nth-child(2),.periodPanel td:nth-child(5){white-space:normal!important;overflow-wrap:anywhere;word-break:normal;line-height:1.7}.periodPanel tbody tr:nth-child(even){background:#f6f9fa}.periodPanel tr{break-inside:avoid;page-break-inside:avoid}.periodPanel bdi{direction:ltr;unicode-bidi:isolate}.clockTime{display:inline-flex;direction:ltr;flex-direction:row;align-items:center;justify-content:center;gap:5px;unicode-bidi:isolate}.emptyPeriod{color:#63727b}.missingRoom{color:#a33a26;font-weight:700}.examInstructions{border:1px solid #d0dfe5;border-radius:13px;padding:12px 16px;background:#f0f4f6;margin-top:24px;break-inside:avoid;page-break-inside:avoid}.examInstructions h3{font-size:15px;color:#075b68;margin:0 0 7px}.examInstructions div{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85;font-size:12px}.noPrint{padding:12px;background:#e6f3f4;position:sticky;top:0;z-index:10}.noPrint button{padding:10px 20px;border:0;background:#006575;color:#fff;border-radius:8px;font-size:14px;cursor:pointer}@media print{.noPrint{display:none!important}.announcementBrand{min-height:42px;font-size:13px}.announcementBrand small{font-size:11px}.announcementTitle{margin-block:5px;font-size:16px;padding:4px 8px}.announcementTerm{padding:4px 18px;margin-bottom:8px;font-size:13px}.announcementDay{padding:6px;margin-bottom:8px}.periodPanel th,.periodPanel td{padding:3px 2px}.examInstructions{margin-top:12px;padding:7px 10px}.announcementSheet{box-shadow:none;border:0;padding:10px 8px;break-inside:avoid;page-break-inside:avoid}.periodGrid{break-inside:avoid;page-break-inside:avoid}.periodPanel{break-inside:avoid;page-break-inside:avoid}.periodPanel table{break-inside:avoid;page-break-inside:avoid}}`;
+const announcementPrintCss=`@page{size:A4 landscape;margin:9mm}*{box-sizing:border-box}html{direction:rtl}body{font-family:Tahoma,Arial,sans-serif;direction:rtl;color:#172e39;margin:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.announcementSheet{width:279mm;margin-inline:auto;background:#fff;padding:10px 8px;break-before:auto;page-break-before:auto;position:relative;overflow:visible}.announcementSheet+.announcementSheet{break-before:page;page-break-before:always}.announcementSheet:before{content:"";position:absolute;top:0;left:0;width:175px;height:60px;background:linear-gradient(135deg,#008f99 0 34%,#08647a 34% 58%,#d6e9ef 58% 72%,transparent 72%);pointer-events:none}.announcementMasthead{padding-top:5px}.announcementBrand{text-align:right;margin-right:6px;font-weight:800;font-size:16px;color:#111e26;line-height:1.55;min-height:60px}.announcementBrand small{display:block;font-size:13px;color:#245663}.announcementTitle{margin:7px auto 9px;max-width:850px;background:linear-gradient(100deg,#00616e,#00818a,#034f63);border:5px solid #e2f0f3;border-radius:42px;text-align:center;color:white;font-size:18px;font-weight:800;padding:7px 10px;box-shadow:0 3px 0 #c8e2e7}.titleMark{display:inline-block;border:2px solid #d5f1f4;border-radius:8px;padding:0px 8px;margin-left:10px;font-size:25px}.announcementTerm{display:table;text-align:center;margin:0 auto 16px;padding:9px 32px;border-radius:40px;background:#e0eff3;color:#162f38;font-size:17px;font-weight:800}.announcementDay{display:flex;justify-content:center;gap:18px;align-items:center;background:#eaf0f4;border-radius:14px;padding:12px;margin:0 0 18px;font-size:13px;color:#172c35}.announcementDay strong{font-weight:800}.announcementDay bdi,.periodTime bdi{direction:ltr;unicode-bidi:isolate}.periodGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));direction:rtl;gap:9px;align-items:start}.periodPanel{border:2px solid var(--period-border);border-radius:14px;overflow:visible;min-width:0;break-inside:auto;page-break-inside:auto;background:#fff}.period1{--period-border:#078749;--period-light:#dff4e9;--period-deep:#08733e}.period2{--period-border:#ed8a0b;--period-light:#fff0d9;--period-deep:#c96c05}.period3{--period-border:#117fcb;--period-light:#e0f0fc;--period-deep:#0c63a8}.periodHeading{background:linear-gradient(110deg,var(--period-border),var(--period-deep));color:white;text-align:center;font-size:13px;font-weight:800;padding:4px 3px}.periodTime{text-align:center;background:var(--period-light);padding:6px;font-weight:800;font-size:15px;margin:5px;border-radius:8px}.periodPanel table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px;direction:rtl;margin:9px 0 0}.periodPanel th,.periodPanel td{border:1px solid #b9cbd1;padding:5px 2px;text-align:center;vertical-align:middle;overflow-wrap:anywhere;word-break:normal;white-space:normal;line-height:1.65}.periodPanel th{background:var(--period-light);font-weight:800;font-size:10px}.periodPanel th:nth-child(1){width:21%}.periodPanel th:nth-child(2){width:25%}.periodPanel th:nth-child(3){width:14%}.periodPanel th:nth-child(4){width:19%}.periodPanel th:nth-child(5){width:21%}.periodPanel td:nth-child(2),.periodPanel td:nth-child(5){white-space:normal!important;overflow-wrap:anywhere;word-break:normal;line-height:1.7}.periodPanel tbody tr:nth-child(even){background:#f6f9fa}.periodPanel tr{break-inside:avoid;page-break-inside:avoid}.periodPanel bdi{direction:ltr;unicode-bidi:isolate}.clockTime{display:inline-flex;direction:ltr;flex-direction:row;align-items:center;justify-content:center;gap:5px;unicode-bidi:isolate}.emptyPeriod{color:#63727b}.missingRoom{color:#a33a26;font-weight:700}.examInstructions{border:1px solid #d0dfe5;border-radius:13px;padding:12px 16px;background:#f0f4f6;margin-top:24px;break-inside:avoid;page-break-inside:avoid}.examInstructions h3{font-size:15px;color:#075b68;margin:0 0 7px}.examInstructions div{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85;font-size:12px}.noPrint{padding:12px;background:#e6f3f4;position:sticky;top:0;z-index:10}.noPrint button{padding:10px 20px;border:0;background:#006575;color:#fff;border-radius:8px;font-size:14px;cursor:pointer}.announcementBrand{min-height:42px;font-size:13px}.announcementBrand small{font-size:11px}.announcementTitle{margin-block:5px;font-size:16px;padding:4px 8px}.announcementTerm{padding:4px 18px;margin-bottom:8px;font-size:13px}.announcementDay{padding:6px;margin-bottom:8px}.periodPanel th,.periodPanel td{padding:3px 2px}.examInstructions{margin-top:12px;padding:7px 10px}.announcementSheet{box-shadow:none;border:0;padding:10px 8px;break-inside:avoid;page-break-inside:avoid}.periodGrid{break-inside:avoid;page-break-inside:avoid}.periodPanel{break-inside:avoid;page-break-inside:avoid}.periodPanel table{break-inside:avoid;page-break-inside:avoid}
+.announcementSheet{margin-block:0}
+@media print{.noPrint{display:none!important}}`;
 function previewAnnouncement(){
   const preview=$("#announcementPreview");
-  preview.innerHTML=announcementSheets($("#announcementDate")?.value||"",true)||'<div class="card">لا توجد اختبارات مجدولة.</div>';
-  $("#announcementInfo").textContent="المعاينة تتحدث عند تغيير اليوم، والتصميم المعتمد للمتدربين محفوظ.";
+  const date=$("#announcementDate").value;
+  preview.innerHTML=(date&&announcementSheets(date))||'<div class="card">لا توجد اختبارات مجدولة.</div>';
+  $("#announcementInfo").textContent="تعرض المعاينة اليوم المحدد. تُرتّب الصفحات عند تجهيز الطباعة.";
+}
+function paginateAnnouncement(doc) {
+  const ruler=doc.createElement("div");
+  ruler.style.cssText="height:190mm;position:absolute;visibility:hidden";
+  doc.body.append(ruler);
+  const pageHeight=ruler.getBoundingClientRect().height;
+  ruler.remove();
+  for(const day of doc.querySelectorAll(".announcementSheet")){
+    if(day.getBoundingClientRect().height<=pageHeight)continue;
+    const bodies=[...day.querySelectorAll("tbody")];
+    const rows=bodies.map(body=>[...body.rows]);
+    const heights=rows.map(list=>list.map(row=>row.getBoundingClientRect().height));
+    const instructions=day.querySelector(".examInstructions");
+    const instructionsHeight=instructions?instructions.getBoundingClientRect().height+12:0;
+    const baseHeights=bodies.map((body,i)=>day.getBoundingClientRect().height-
+      (day.querySelector(".periodGrid").getBoundingClientRect().height-
+       body.closest(".periodPanel").getBoundingClientRect().height)-
+      heights[i].reduce((total,height)=>total+height,0)-instructionsHeight);
+    const template=day.cloneNode(true);
+    template.querySelector(".examInstructions")?.remove();
+    for(const body of template.querySelectorAll("tbody"))body.replaceChildren();
+    const offset=rows.map(()=>0);
+    const pages=doc.createDocumentFragment();
+    while(rows.some((list,i)=>offset[i]<list.length)){
+      const fitsWithInstructions=rows.every((list,i)=>baseHeights[i]+instructionsHeight+
+        heights[i].slice(offset[i]).reduce((sum,height)=>sum+height,0)<=pageHeight);
+      const availableHeight=pageHeight-(fitsWithInstructions?instructionsHeight:0);
+      const page=template.cloneNode(true);
+      [...page.querySelectorAll("tbody")].forEach((body,i)=>{
+        let height=baseHeights[i];
+        while(offset[i]<rows[i].length && (!body.rows.length||height+heights[i][offset[i]]<=availableHeight)){
+          height+=heights[i][offset[i]];
+          body.append(rows[i][offset[i]++]);
+        }
+      });
+      if(instructions&&!rows.some((list,i)=>offset[i]<list.length)){
+        page.append(instructions);
+        if(!fitsWithInstructions)page.style.breakInside="auto";
+      }
+      pages.append(page);
+    }
+    day.replaceWith(pages);
+  }
 }
 function printAnnouncement(onlyDate=""){
-  // Open synchronously on the user click, before expensive report generation.
-  // Browsers may block windows opened only after computation.
   const win=window.open("about:blank","_blank");
   if(!win){notifyError("المتصفح يمنع نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم حاول مجددًا.");return;}
   try{
-    win.document.open();
-    win.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>إعداد الطباعة</title></head><body><p>جارٍ تجهيز جدول الاختبارات للطباعة…</p></body></html>');
-    win.document.close();
-    const sheets=announcementSheets(onlyDate,true);
+    const sheets=announcementSheets(onlyDate);
     if(!sheets){win.close();notifyError("لا توجد اختبارات مجدولة لهذا الاختيار");return;}
-    win.document.open();
-    win.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>إعلان جدول الاختبارات للمتدربين</title><style>${announcementPrintCss}</style></head><body><div class="noPrint"><button onclick="window.print()">طباعة / حفظ PDF</button> <span>بعد ظهور الجدول، اضغط الزر للحفظ PDF.</span></div>`);
-    for(const page of sheets.match(/<section class="announcementSheet">[\s\S]*?<\/section>/g)||[])win.document.write(page);
-    win.document.write("</body></html>");
-    win.document.close();
+    const doc=win.document;
+    doc.open();
+    doc.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>إعلان جدول الاختبارات للمتدربين</title><style>${announcementPrintCss}</style></head><body><div class="noPrint"><button id="print" disabled>طباعة / حفظ PDF</button> <span>لحفظ نسخة قابلة للبحث، اختر «حفظ بتنسيق PDF» في المتصفح، وتأكد من A4 أفقي.</span></div>${sheets}</body></html>`);
+    doc.close();
+    doc.fonts.ready.then(()=>{
+      paginateAnnouncement(doc);
+      const button=doc.getElementById("print");
+      button.onclick=()=>win.print();
+      button.disabled=false;
+    }).catch(err=>notifyError("تعذر تجهيز الطباعة: "+err.message));
     win.focus();
-  }catch(err){console.error("Announcement print failed",err);try{win.close()}catch(_){}notifyError("تعذر تجهيز الطباعة: "+err.message);}
+  }catch(err){win.close();notifyError("تعذر تجهيز الطباعة: "+err.message);}
 }
 
 function auditStatus(rows=activeAuditRows()){const working=eligibleExams(),ready=!!state.ss01.length&&working.length>0&&eligibleSections().size>0&&working.every(e=>e.section&&validRoomLabel(e.room)&&e.inv1&&e.inv2);return rows.some(r=>r[0]==="خطأ")?"يحتاج معالجة":!ready||rows.some(r=>r[0]==="تحذير")?"غير مكتمل":Object.keys(state.auditExceptions||{}).length?"سليم مع استثناءات":"سليم";}
