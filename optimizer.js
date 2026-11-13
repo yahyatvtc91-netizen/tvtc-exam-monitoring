@@ -240,7 +240,7 @@ function createExamOptimizer() {
     const roster = new Map(input.people.map(t => [t.id, t]));
     const fixed = new Map(input.people.map(t => [t.id, new Set()]));
     const groups = new Map();
-    const outside = new Map(), leader = new Map(), third = new Map(), triples = new Map(), adjacent = new Map();
+    const outside = new Map(), leader = new Map(), third = new Map(), adjacent = new Map();
     for (const [slot, exams] of timing.slots) {
       const byDepartment = new Map();
       groups.set(slot, byDepartment);
@@ -298,7 +298,7 @@ function createExamOptimizer() {
         for (let i = 0; i < sequence.length; i++) {
           const current = work.get(sequence[i]);
           if (current === undefined) {
-            possible += run - (person.allowThree ? 0 : Math.floor(run / 3));
+            possible += run - Math.floor(run / 3);
             run = 0;
             continue;
           }
@@ -308,10 +308,12 @@ function createExamOptimizer() {
           adjacent.set(and(linear, [previous, current]), 1);
           const first = work.get(sequence[i - 2]);
           if (first === undefined) continue;
-          if (person.allowThree) triples.set(and(linear, [first, previous, current]), 1);
-          else linear.row(sum([first, previous, current]), undefined, 2);
+          if (sequence.slice(i - 2, i + 1).every(slot => fixedSlots.has(slot))) {
+            throw new Error(`المراقب ${person.name} مثبت في ثلاث فترات متتالية. فك تثبيت إحدى الفترات ثم أعد التوزيع.`);
+          }
+          linear.row(sum([first, previous, current]), undefined, 2);
         }
-        possible += run - (person.allowThree ? 0 : Math.floor(run / 3));
+        possible += run - Math.floor(run / 3);
       }
       const cap = Math.min(person.max, possible);
       if (fixedSlots.size > cap) throw new Error(`تثبيتات ${person.name} تتجاوز حده الأعلى أو فتراته المتاحة.`);
@@ -324,7 +326,7 @@ function createExamOptimizer() {
     for (const byDepartment of groups.values()) for (const team of byDepartment.values()) {
       if (team.picks.length) linear.row(sum(team.picks.map(pair => pair[1])), undefined, team.open);
     }
-    return {loads, limits, groups, outside, leader, third, triples, adjacent,
+    return {loads, limits, groups, outside, leader, third, adjacent,
       count: sum(loads.values(), -1)};
   }
 
@@ -381,7 +383,6 @@ function createExamOptimizer() {
       stages.step("موازنة الأنصبة على مستوى الكلية", new Map([[spread, 1]]));
     }
     stages.step("أولوية المراقبة داخل القسم", plan.outside);
-    stages.step("تقليل الثلاثيات المتتالية", plan.triples);
     stages.step("تقليل المراقبات المتتابعة", plan.adjacent);
     return policy;
   }

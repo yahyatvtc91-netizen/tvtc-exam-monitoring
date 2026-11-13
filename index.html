@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>نظام المراقبات | الإصدار 5.5</title>
   <link rel="stylesheet" href="styles.css?v=5.5.2">
-  <link rel="stylesheet" href="identity.css?v=5.5.2">
+  <link rel="stylesheet" href="identity.css?v=5.5.3">
 </head>
 <body>
   <header class="topbar">
@@ -96,7 +96,7 @@
       <div class="sectionHead"><div><h2>أسماء المدربين</h2><p>يُستبعد المدرب غير النشط من التوزيع. ويمكن السماح بالمراقبة أثناء اختبار المقرر لجميع المدربين أو وفق إعداد كل مدرب.</p></div><button id="addTrainerBtn">إضافة مدرب</button></div>
       <div class="filters"><input id="trainerSearch" type="search" placeholder="بحث باسم المدرب" aria-label="بحث باسم المدرب"><label>المراقبة وقت اختبار المقرر
         <select id="ownExamMonitoringMode"><option value="allow">السماح للجميع</option><option value="block">المنع للجميع</option><option value="individual">حسب إعداد كل مدرب</option></select></label></div>
-      <div class="tableWrap"><table id="trainersTable"><colgroup><col style="width:12%"><col style="width:24%"><col style="width:18%"><col style="width:9%"><col style="width:8%"><col style="width:15%"><col style="width:8%"><col style="width:6%"></colgroup><thead><tr><th>الرقم الوظيفي</th><th>الاسم</th><th>القسم</th><th>نشط</th><th>الحد الأعلى</th><th>لا مانع من المراقبة في فترة اختبار مقرره</th><th><label><input id="allowThreeAll" type="checkbox"> لا مانع من 3 فترات متتالية</label></th><th>المصدر</th></tr></thead><tbody></tbody></table></div>
+      <div class="tableWrap"><table id="trainersTable"><colgroup><col style="width:12%"><col style="width:28%"><col style="width:22%"><col style="width:9%"><col style="width:8%"><col style="width:15%"><col style="width:6%"></colgroup><thead><tr><th>الرقم الوظيفي</th><th>الاسم</th><th>القسم</th><th>نشط</th><th>الحد الأعلى</th><th>لا مانع من المراقبة في فترة اختبار مقرره</th><th>المصدر</th></tr></thead><tbody></tbody></table></div>
     </section>
 
     <section id="page-availability" class="page">
@@ -202,9 +202,9 @@
   <dialog id="editDialog"><form method="dialog"><h3 id="dialogTitle">تعديل</h3><div id="dialogFields"></div><div class="dialogActions"><button value="cancel">إلغاء</button><button id="dialogSave" value="default" class="primary">حفظ</button></div></form></dialog>
   <div id="toast" class="toast"></div>
   <script src="vendor/highs-runtime.js"></script>
-  <script src="optimizer.js"></script>
-  <script src="distribution.js?v=5.5.1"></script>
-  <script src="app.js?v=5.5.2"></script>
+  <script src="optimizer.js?v=5.5.3"></script>
+  <script src="distribution.js?v=5.5.3"></script>
+  <script src="app.js?v=5.5.3"></script>
   <script src="identity.js?v=5.5.2"></script>
 </body>
 </html>

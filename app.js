@@ -571,7 +571,6 @@ function hasConsecutiveTriple(periods) {
     periods.has(ordered[i-1]) && periods.has(ordered[i-2]));
 }
 function wouldMakeThree(name, exam, skipField) {
-  if (findMonitoringTrainer(name)?.allowThreeConsecutive === true) return false;
   const target=norm(name), date=dayKey(exam), periods=new Set([Number(exam.period)]);
   for (const e of eligibleExams()) if (dayKey(e)===date &&
       assignmentFields.some(f => !(e===exam&&f===skipField) && norm(e[f])===target)) periods.add(Number(e.period));
@@ -604,7 +603,7 @@ function manualMonitorIssue(name,exam,field) {
     }
   }
   if (count>=Number(entry.max)) return "بلغ المراقب حده الأعلى.";
-  if (wouldMakeThree(name,exam,field)) return "هذا التكليف يؤدي إلى ثلاث فترات متتالية دون سماح.";
+  if (wouldMakeThree(name,exam,field)) return "هذا التكليف يؤدي إلى ثلاث فترات متتالية، والحد المسموح فترتان متتاليتان.";
   return "";
 }
 function clearOwnExamMonitoring(t,ownership) {
@@ -673,7 +672,7 @@ function runAudit(){
   for (const {trainer:t,max} of roster) {
     const count=counts.get(norm(t.name))||0;
     if (count>Number(max)) rows.push(["خطأ","تجاوز الحد الأعلى",`${t.name}: ${count} من ${max}`,"المدربون"]);
-    if (t.allowThreeConsecutive===true || !count) continue;
+    if (!count) continue;
     const byDay=new Map();
     for (const e of assignmentsFor(t.name)) {
       const key=dayKey(e),periods=byDay.get(key)||new Set();
@@ -696,11 +695,12 @@ function runAudit(){
   for(const [key,item] of expected)if(!scheduled.has(key))rows.push(["تحذير","شعبة غير مجدولة",`${item.course||"مقرر غير مسمى"} (${item.code||"رمز غير محدد"}) — شعبة ${item.section} — النوع: ${item.type||"غير محدد"}`,"الشعب"]);
   auditRows=rows;
   state.auditExceptions??={};
-  const current=new Set(rows.map(auditKey));
+  const current=new Set(rows.filter(canExceptAuditRow).map(auditKey));
   for(const key of Object.keys(state.auditExceptions))if(!current.has(key))delete state.auditExceptions[key];
   if(typeof document!=="undefined"){renderAudit();if(!$("#scheduleAuditPanel")?.hidden)renderScheduleAudit();}return rows;
 }
 function auditKey(row){return JSON.stringify([row[0],row[1],row[2],row[3],row[4]||""]);}
+function canExceptAuditRow(row){return row[1]!=="ثلاث فترات متتابعة";}
 function activeAuditRows(){return auditRows.filter(row=>!state.auditExceptions?.[auditKey(row)]);}
 
 function renderScheduleAudit(){
@@ -744,12 +744,10 @@ function renderLeadership(){
  for(const b of $$('[data-remove-leader]',tbody))b.onclick=()=>{const l=leaders().find(x=>x.trainer.key===b.dataset.removeLeader);if(!l)return;removeLeadership(l.trainer.name);renderAll();toast("تمت إزالة القيادة الإشرافية وإعادة بيانات المدرب عند انطباق ذلك");};
  const selector=$("#leadershipTrainer");const old=selector.value;selector.innerHTML='<option value="">— اختر من المدربين —</option>'+state.trainers.slice().sort((a,b)=>a.name.localeCompare(b.name,"ar")).map(t=>`<option value="${esc(t.name)}">${esc(t.name)} — ${esc(t.id)}</option>`).join("");selector.value=old;
 }
-function renderTrainers(){const control=$("#ownExamMonitoringMode");control.value=state.meta?.ownExamMonitoringMode||"individual";const individual=control.value==="individual";const b=$("#trainersTable tbody");b.innerHTML=state.trainers.map(t=>`<tr data-key="${t.key}"><td><input data-f="id" value="${esc(t.id)}"></td><td><input data-f="name" type="text" aria-label="اسم المدرب" value="${esc(t.name)}"></td><td><select data-f="dept" aria-label="القسم">${departmentOptions(t.dept)}</select></td><td><select data-f="active"><option value="true" ${activeTrainer(t)?"selected":""}>متاح</option><option value="false" ${!activeTrainer(t)?"selected":""}>X</option></select></td><td><input type="number" min="0" data-f="max" value="${num(t.max,999)}"></td><td>${individual?'<label><input type="checkbox" data-f="allowOwnExamMonitoring" '+(t.allowOwnExamMonitoring===true?'checked':'')+'> نعم</label>':`<span class="monitoringPolicyStatus">${monitoringOwnExamAllowed(t)?"مسموح":"ممنوع"}</span>`}</td><td><input type="checkbox" data-f="allowThreeConsecutive" ${t.allowThreeConsecutive===true?"checked":""} aria-label="السماح بثلاث فترات متتالية"></td><td class="source">${esc(t.source)}</td></tr>`).join("");
-  const allThree=$("#allowThreeAll");if(allThree){const count=state.trainers.filter(t=>t.allowThreeConsecutive===true).length;allThree.checked=state.trainers.length>0&&count===state.trainers.length;allThree.indeterminate=count>0&&count<state.trainers.length;allThree.onchange=()=>{state.trainers.forEach(t=>t.allowThreeConsecutive=allThree.checked);saveSoon();renderTrainers();runAudit();toast("تم تحديث سياسة الفترات المتتالية للمدربين");};}
+function renderTrainers(){const control=$("#ownExamMonitoringMode");control.value=state.meta?.ownExamMonitoringMode||"individual";const individual=control.value==="individual";const b=$("#trainersTable tbody");b.innerHTML=state.trainers.map(t=>`<tr data-key="${t.key}"><td><input data-f="id" value="${esc(t.id)}"></td><td><input data-f="name" type="text" aria-label="اسم المدرب" value="${esc(t.name)}"></td><td><select data-f="dept" aria-label="القسم">${departmentOptions(t.dept)}</select></td><td><select data-f="active"><option value="true" ${activeTrainer(t)?"selected":""}>متاح</option><option value="false" ${!activeTrainer(t)?"selected":""}>X</option></select></td><td><input type="number" min="0" data-f="max" value="${num(t.max,999)}"></td><td>${individual?'<label><input type="checkbox" data-f="allowOwnExamMonitoring" '+(t.allowOwnExamMonitoring===true?'checked':'')+'> نعم</label>':`<span class="monitoringPolicyStatus">${monitoringOwnExamAllowed(t)?"مسموح":"ممنوع"}</span>`}</td><td class="source">${esc(t.source)}</td></tr>`).join("");
   const query=norm($("#trainerSearch").value);for(const tr of $$("tr[data-key]",b)){const t=state.trainers.find(x=>x.key===tr.dataset.key);tr.hidden=!!query&&!norm(t.name).includes(query);}
   for(const tr of $$("tr[data-key]",b)){const t=state.trainers.find(x=>x.key===tr.dataset.key);for(const e of $$('[data-f]',tr)){
     if(e.dataset.f==="active")e.onchange=()=>{t.active=e.value==="true";refreshAfterAvailabilityChange();renderTrainers();};
-    else if(e.dataset.f==="allowThreeConsecutive")e.onchange=()=>{t.allowThreeConsecutive=e.checked;saveSoon();renderReports();runAudit();toast("تم حفظ إعداد الفترات المتتالية للمدرب");};
     else if(e.dataset.f==="allowOwnExamMonitoring")e.onchange=()=>{t.allowOwnExamMonitoring=e.checked;const cleared=clearOwnExamMonitoring(t);saveSoon();renderSchedule();renderReports();runAudit();if(cleared)toast(`أُزيل ${cleared} تكليفًا أثناء اختبار مقرر المدرب`,"warning");};
     else if(e.dataset.f==="dept")e.onchange=()=>{t.dept=normalizeDepartment(e.value);saveSoon();renderSchedule();renderReports();};
     else if(e.dataset.f==="id")e.onchange=()=>{const id=canonicalTrainerId(e.value);if(id&&allMonitoringTrainers().some(x=>x!==t&&canonicalTrainerId(x.id)===id)){notifyError("هذا الرقم الوظيفي موجود بالفعل");e.value=t.id;return;}t.id=id;saveSoon();renderTrainers();};
@@ -1137,7 +1135,7 @@ function renderAudit(){
   $("#auditSummary").innerHTML=[["أخطاء",errors],["تحذيرات",warnings],["استثناءات",exceptions],["حالة الجدول",auditStatus()]].map(([l,v])=>`<div class="metric"><strong class="${l==="أخطاء"&&v?"audit-error":l==="تحذيرات"&&v?"audit-warning":l==="حالة الجدول"?(v==="يحتاج معالجة"?"audit-error":v==="غير مكتمل"?"audit-warning":"audit-ok"):""}">${esc(v)}</strong><span>${l}</span></div>`).join("");
   const category=$("#auditCategory").value,level=$("#auditLevel").value,showExceptions=$("#showAuditExceptions").checked;
   const visible=auditRows.map((row,i)=>({row,i,excepted:!!state.auditExceptions?.[auditKey(row)]})).filter(x=>(!category||x.row[3]===category)&&(!level||x.row[0]===level)&&(showExceptions||!x.excepted));
-  $("#auditTable tbody").innerHTML=visible.length?visible.map(({row:r,i,excepted})=>`<tr class="${excepted?"exceptedRow":""}"><td class="audit-${r[0]==="خطأ"?"error":r[0]==="تحذير"?"warning":"ok"}">${esc(excepted?"مستثنى":r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td><button type="button" data-audit-index="${i}">${excepted?"إلغاء الاستثناء":r[0]==="تحذير"?"استثناء التحذير":"استثناء الخطأ"}</button></td></tr>`).join(""):'<tr><td colspan="4">لا توجد نتائج في هذا التصنيف</td></tr>';
+  $("#auditTable tbody").innerHTML=visible.length?visible.map(({row:r,i,excepted})=>`<tr class="${excepted?"exceptedRow":""}"><td class="audit-${r[0]==="خطأ"?"error":r[0]==="تحذير"?"warning":"ok"}">${esc(excepted?"مستثنى":r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${canExceptAuditRow(r)?`<button type="button" data-audit-index="${i}">${excepted?"إلغاء الاستثناء":r[0]==="تحذير"?"استثناء التحذير":"استثناء الخطأ"}</button>`:"انقل أحد التكليفات"}</td></tr>`).join(""):'<tr><td colspan="4">لا توجد نتائج في هذا التصنيف</td></tr>';
   for(const button of $$("#auditTable [data-audit-index]"))button.onclick=()=>{
     const row=auditRows[Number(button.dataset.auditIndex)],key=auditKey(row);
     state.auditExceptions??={};

@@ -41,8 +41,7 @@ function distributionPeople(strict = true) {
     const person = {
       id, name: trainer.name, trainer, max, group: entry.group, active: activeTrainer(trainer),
       departments: [...new Set(String(trainer.dept || "").split(/[،,]/)
-        .map(x => norm(normalizeDepartment(x.trim()))).filter(Boolean))],
-      allowThree: trainer.allowThreeConsecutive === true
+        .map(x => norm(normalizeDepartment(x.trim()))).filter(Boolean))]
     };
     roster.set(id, person);
     byName.set(name, person);
@@ -193,8 +192,8 @@ function validateDistribution(input, result, mode) {
       if (!person || !allowed.get(person.id).has(exam.slot)) throw new Error("تضمنت النتيجة مراقبًا غير مؤهل في هذه الفترة.");
       claim(occupiedPeople, JSON.stringify([person.id, exam.slot]), `تعارض مراقبة للمدرب ${person.name}.`);
       const key = JSON.stringify([person.id, exam.date]);
-      if (!peopleDays.has(key)) peopleDays.set(key, {person, periods:new Set()});
-      peopleDays.get(key).periods.add(exam.period);
+      if (!peopleDays.has(key)) peopleDays.set(key, new Set());
+      peopleDays.get(key).add(exam.period);
       filled++;
       counts.set(person.id, counts.get(person.id) + 1);
       if (person.group) {
@@ -209,10 +208,9 @@ function validateDistribution(input, result, mode) {
   }
   if (applyMonitors) {
     for (const [id, count] of counts) if (count > people.get(id).max) throw new Error("تجاوز نصاب مراقب حده الأعلى.");
-    for (const {person, periods} of peopleDays.values()) {
-      if (person.allowThree) continue;
+    for (const periods of peopleDays.values()) {
       for (let i = 2; i < input.periods.length; i++) {
-        if (input.periods.slice(i-2,i+1).every(p => periods.has(p))) throw new Error("وجد تكليف بثلاث فترات متتالية دون سماح.");
+        if (input.periods.slice(i-2,i+1).every(p => periods.has(p))) throw new Error("وجد تكليف بثلاث فترات متتالية للمراقب نفسه.");
       }
     }
   }

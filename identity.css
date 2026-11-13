@@ -185,10 +185,9 @@ dialog{border:1px solid #dbe9e5;border-radius:15px;box-shadow:0 20px 75px #173b3
 #trainersTable th,#trainersTable td{padding:5px 6px!important;vertical-align:middle!important;line-height:1.3!important;white-space:normal!important}
 #trainersTable th{font-size:11px!important;text-align:center!important}
 #trainersTable td input:not([type=checkbox]),#trainersTable td select{box-sizing:border-box;width:100%!important;min-width:0!important;max-width:none!important;height:33px!important;min-height:33px!important;padding:4px 6px!important;font-size:12px!important;border-radius:6px!important}
-#trainersTable td input[type=checkbox],#allowThreeAll{appearance:auto!important;width:17px!important;height:17px!important;min-width:17px!important;min-height:17px!important;max-width:17px!important;margin:0 4px!important;vertical-align:middle;accent-color:#0b8b83;transform:none!important}
+#trainersTable td input[type=checkbox]{appearance:auto!important;width:17px!important;height:17px!important;min-width:17px!important;min-height:17px!important;max-width:17px!important;margin:0 4px!important;vertical-align:middle;accent-color:#0b8b83;transform:none!important}
 #trainersTable td label{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 #trainersTable th:nth-child(6){min-width:0!important}
-#trainersTable th:nth-child(7) label{display:flex;align-items:center;justify-content:center;gap:5px;line-height:1.3}
 #trainersTable tbody tr{height:43px!important}
 #trainersTable .source{font-size:11px!important}
 .printModeLabel{display:inline-flex;align-items:center;gap:8px;margin:8px 0;font-weight:600;font-size:13px}
