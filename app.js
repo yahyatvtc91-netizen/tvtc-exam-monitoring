@@ -1079,7 +1079,8 @@ function renderReports(){
        <thead><tr><th scope="col">اسم المدرب</th><th scope="col">عدد المراقبات</th></tr></thead>
        <tbody>${items.map(t=>`<tr><th scope="row">${esc(t.name)}</th><td>${c[t.name]||0}</td></tr>`).join("")}</tbody>
      </table></section>`:"";
-   $("#trainerCounts").innerHTML=list("المدربون",active)+list("القيادات الإشرافية",leaders().filter(l=>l.role!==COMMITTEE_ROLE).map(leadershipTrainer).sort(byLoad))+list("أعضاء لجان الاختبار",leaders().filter(l=>l.role===COMMITTEE_ROLE).map(leadershipTrainer).sort(byLoad))+list("غير النشطين",state.trainers.filter(t=>!activeTrainer(t)).sort(byLoad));
+   const activeLeaders=leaders().filter(l=>activeTrainer(leadershipTrainer(l)));
+   $("#trainerCounts").innerHTML=list("المدربون",active)+list("القيادات الإشرافية",activeLeaders.filter(l=>l.role!==COMMITTEE_ROLE).map(leadershipTrainer).sort(byLoad))+list("أعضاء لجان الاختبار",activeLeaders.filter(l=>l.role===COMMITTEE_ROLE).map(leadershipTrainer).sort(byLoad));
  }
 }
 function trainerSheet(name){
@@ -1207,6 +1208,64 @@ function paginateAnnouncement(doc) {
     day.replaceWith(pages);
   }
 }
+async function announcementPageImage(sheet, css) {
+  const bounds = sheet.getBoundingClientRect();
+  const width = Math.ceil(bounds.width), height = Math.ceil(bounds.height);
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", width);
+  svg.setAttribute("height", height);
+  const foreign = document.createElementNS(svg.namespaceURI, "foreignObject");
+  foreign.setAttribute("width", "100%");
+  foreign.setAttribute("height", "100%");
+  const container = document.createElement("div");
+  container.dir = "rtl";
+  container.style.cssText = "font-family:Tahoma,Arial,sans-serif;color:#172e39;background:#fff";
+  const style = document.createElement("style");
+  style.textContent = css;
+  container.append(style, sheet.cloneNode(true));
+  foreign.append(container);
+  svg.append(foreign);
+  const image = new Image();
+  image.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(new XMLSerializer().serializeToString(svg));
+  await image.decode();
+  const canvas = document.createElement("canvas");
+  const scale = Math.min(1.65, 2400 / Math.max(width, height));
+  canvas.width = Math.ceil(width * scale);
+  canvas.height = Math.ceil(height * scale);
+  const context = canvas.getContext("2d", {alpha:false});
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return {width, height, jpeg:canvas.toDataURL("image/jpeg", 0.85)};
+}
+
+async function saveAnnouncementPdf(doc, button) {
+  button.disabled = true;
+  const originalLabel = button.textContent;
+  try {
+    const {jsPDF} = window.jspdf;
+    const pdf = new jsPDF({orientation:"landscape", unit:"mm", format:"a4", compress:true});
+    pdf.setProperties({title:"إعلان جدول الاختبارات للمتدربين"});
+    const pages = [...doc.querySelectorAll(".announcementSheet")];
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    for (const [index, sheet] of pages.entries()) {
+      button.textContent = `جارٍ تجهيز صفحة ${index+1} من ${pages.length}…`;
+      const image = await announcementPageImage(sheet, announcementPrintCss);
+      if (index) pdf.addPage("a4", "landscape");
+      const scale = Math.min((pageWidth-18)/image.width, (pageHeight-18)/image.height);
+      const width = image.width*scale, height = image.height*scale;
+      pdf.addImage(image.jpeg, "JPEG", (pageWidth-width)/2, 9, width, height);
+    }
+    pdf.save("إعلان جدول الاختبارات.pdf");
+  } catch (error) {
+    notifyError("تعذر تنزيل PDF: " + error.message);
+  } finally {
+    button.textContent = originalLabel;
+    button.disabled = false;
+  }
+}
+
 function printAnnouncement(onlyDate=""){
   const win=window.open("about:blank","_blank");
   if(!win){notifyError("المتصفح يمنع نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم حاول مجددًا.");return;}
@@ -1215,13 +1274,16 @@ function printAnnouncement(onlyDate=""){
     if(!sheets){win.close();notifyError("لا توجد اختبارات مجدولة لهذا الاختيار");return;}
     const doc=win.document;
     doc.open();
-    doc.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>إعلان جدول الاختبارات للمتدربين</title><style>${announcementPrintCss}</style></head><body><div class="noPrint"><button id="print" disabled>طباعة / حفظ PDF</button> <span>لحفظ نسخة قابلة للبحث، اختر «حفظ بتنسيق PDF» في المتصفح، وتأكد من A4 أفقي.</span></div>${sheets}</body></html>`);
+    doc.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>إعلان جدول الاختبارات للمتدربين</title><style>${announcementPrintCss}</style></head><body><div class="noPrint"><button id="downloadPdf" disabled>تنزيل PDF أفقي A4</button> <button id="print" disabled>طباعة مباشرة</button></div>${sheets}</body></html>`);
     doc.close();
     doc.fonts.ready.then(()=>{
       paginateAnnouncement(doc);
       const button=doc.getElementById("print");
       button.onclick=()=>win.print();
       button.disabled=false;
+      const downloadButton=doc.getElementById("downloadPdf");
+      downloadButton.onclick=()=>saveAnnouncementPdf(doc, downloadButton);
+      downloadButton.disabled=false;
     }).catch(err=>notifyError("تعذر تجهيز الطباعة: "+err.message));
     win.focus();
   }catch(err){win.close();notifyError("تعذر تجهيز الطباعة: "+err.message);}

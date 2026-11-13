@@ -126,7 +126,7 @@
         <button type="button" id="leadershipSaveBtn" class="primary">حفظ</button>
        </div>
        <div class="tableWrap"><table id="leadershipTable"><thead><tr><th>الاسم</th><th>الرقم الوظيفي</th><th>المنصب</th><th>القسم</th><th>الحد الأعلى</th><th>المسند</th><th>إجراء</th></tr></thead><tbody></tbody></table></div>
-       <p>بعد ضمان أقصى تغطية، يعطي النظام القيادات أولوية التكليف ضمن سقف كل شخص، مع تفضيل الفترة الثالثة. يمنع تزامن العميد والوكلاء مع بعضهم، ويمنع تزامن أعضاء الإرشاد.</p><p>يُكلّف عضو اللجنة ضمن حده الأعلى، ويُستبعد من المراقبة في أي فترة فيها اختبار لقسمه.</p>
+       <p>بعد ضمان أقصى تغطية، يعطي النظام القيادات أولوية التكليف ضمن سقف كل شخص، مع تفضيل الفترة الثالثة. يمنع تزامن العميد والوكلاء مع بعضهم، ويمنع تزامن أعضاء الإرشاد.</p><p>عدد المراقبات المحدد لعضو اللجنة النشط هو نصابه الإلزامي في التوزيع الآلي. يُستبعد من أي فترة فيها اختبار لقسمه. إذا تعذّر بلوغ النصاب، يعرض النظام السبب قبل حفظ التوزيع.</p>
       </div>
     </section>
 
@@ -207,9 +207,10 @@
   <dialog id="editDialog"><form method="dialog"><h3 id="dialogTitle">تعديل</h3><div id="dialogFields"></div><div class="dialogActions"><button value="cancel">إلغاء</button><button id="dialogSave" value="default" class="primary">حفظ</button></div></form></dialog>
   <div id="toast" class="toast"></div>
   <script src="vendor/highs-runtime.js"></script>
-  <script src="optimizer.js?v=5.5.3"></script>
-  <script src="distribution.js?v=5.5.10"></script>
-  <script src="app.js?v=5.5.12"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="optimizer.js?v=5.5.13"></script>
+  <script src="distribution.js?v=5.5.13"></script>
+  <script src="app.js?v=5.5.13"></script>
   <script src="identity.js?v=5.5.4"></script>
 </body>
 </html>

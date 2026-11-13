@@ -230,7 +230,13 @@ function validateDistribution(input, result, mode) {
     if ((!applyRooms || row.room) && (!applyMonitors || row.inv1 && row.inv2)) complete++;
   }
   if (applyMonitors) {
-    for (const [id, count] of counts) if (count > people.get(id).max) throw new Error("تجاوز نصاب مراقب حده الأعلى.");
+    for (const [id, count] of counts) {
+      const person = people.get(id);
+      if (count > person.max) throw new Error("تجاوز نصاب مراقب حده الأعلى.");
+      if (person.active && person.committee && count !== person.max) {
+        throw new Error(`لم يتحقق نصاب عضو اللجنة ${person.name}: ${count} من ${person.max}.`);
+      }
+    }
     for (const periods of peopleDays.values()) {
       for (let i = 2; i < input.periods.length; i++) {
         if (input.periods.slice(i-2,i+1).every(p => periods.has(p))) throw new Error("وجد تكليف بثلاث فترات متتالية للمراقب نفسه.");

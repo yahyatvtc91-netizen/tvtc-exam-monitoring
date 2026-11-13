@@ -263,6 +263,7 @@ function createExamOptimizer() {
     }
     const occupancy = new Map(), loads = new Map(), limits = new Map();
     const groupUse = new Map();
+    let committeeLoad = 0;
     for (const person of input.people) {
       const work = new Map(), fixedSlots = fixed.get(person.id);
       occupancy.set(person.id, work);
@@ -317,16 +318,21 @@ function createExamOptimizer() {
       }
       const cap = Math.min(person.max, possible);
       if (fixedSlots.size > cap) throw new Error(`تثبيتات ${person.name} تتجاوز حده الأعلى أو فتراته المتاحة.`);
-      const load = linear.variable(0, cap);
+      const required = person.active && person.committee ? person.max : 0;
+      if (required > cap) {
+        throw new Error(`يتطلب عضو اللجنة ${person.name} ${required} مراقبة، وتسمح الفترات المتاحة والقيود بـ ${cap} فقط.`);
+      }
+      const load = linear.variable(required, cap);
+      committeeLoad += required;
       linear.eq(add(sum(work.values()), load, -1), 0);
       loads.set(person.id, load);
-      if (person.active && !person.group) limits.set(person.id, cap);
+      if (person.active && !person.group && !person.committee) limits.set(person.id, cap);
     }
     for (const vars of groupUse.values()) if (vars.length > 1) linear.row(sum(vars), undefined, 1);
     for (const byDepartment of groups.values()) for (const team of byDepartment.values()) {
       if (team.picks.length) linear.row(sum(team.picks.map(pair => pair[1])), undefined, team.open);
     }
-    return {loads, limits, groups, outside, leader, third, adjacent,
+    return {loads, limits, groups, outside, leader, third, adjacent, committeeLoad,
       count: sum(loads.values(), -1)};
   }
 
@@ -363,12 +369,13 @@ function createExamOptimizer() {
   function optimizeMonitoring(stages, timing, plan, filled) {
     const leads = -stages.step("تكليف القيادات", plan.leader);
     stages.step("أولوية الفترة الثالثة للقيادات", plan.third);
-    const policy = workloadPolicy(plan.limits, filled - leads);
+    const availableLoad = filled - leads - plan.committeeLoad;
+    const policy = workloadPolicy(plan.limits, availableLoad);
     const limitedLoad = policy.limited.length ?
       -stages.step("أنصبة أصحاب السقوف المنخفضة", sum(policy.limited.map(id => plan.loads.get(id)), -1)) : 0;
     if (policy.peers.length > 1) {
       const largest = timing.slots.size;
-      const average = (filled - leads - limitedLoad) / policy.peers.length;
+      const average = (availableLoad - limitedLoad) / policy.peers.length;
       const lower = stages.variable(0, Math.floor(average));
       const spread = stages.variable(Number(!Number.isInteger(average)), largest);
       // Seed the new columns using the existing feasible assignment.
@@ -471,6 +478,11 @@ function createExamOptimizer() {
         }
         decodeMonitors(monitor, engine.values, output, complete);
         return {output, policy};
+      } catch (error) {
+        if (monitor.committeeLoad && error.message.startsWith("تعذر الحل مع التثبيتات")) {
+          throw new Error("تعذر تحقيق الأنصبة المحددة لأعضاء اللجان مع القيود الحالية. راجع نصاب كل عضو، والتفريغ، واختبارات الأقسام، والتثبيتات.");
+        }
+        throw error;
       } finally { engine.dispose(); }
     }
 
