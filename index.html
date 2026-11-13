@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>نظام المراقبات | الإصدار 5.5</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="identity.css?v=5.5.1">
+  <link rel="stylesheet" href="styles.css?v=5.5.2">
+  <link rel="stylesheet" href="identity.css?v=5.5.2">
 </head>
 <body>
   <header class="topbar">
@@ -174,8 +174,8 @@
       </div>
       <div id="monitoringReportPreview" class="tableWrap"></div>
       </div>
-      <div id="report-available-trainers" class="subpanel"><article class="card"><h3>المدربون المتاحون</h3><div class="reportFilters"><label>اليوم والتاريخ<select id="availableTrainerDay"></select></label><label>الفترة<select id="availableTrainerPeriod"></select></label><label>المدرب<select id="availableTrainerName"></select></label></div><button id="printAvailableTrainersBtn" class="primary">طباعة المدربين المتاحين / PDF</button></article><div id="availableTrainersPreview" class="tableWrap freeReportPreview"></div></div>
-      <div id="report-available-rooms" class="subpanel"><article class="card"><h3>القاعات المتاحة</h3><div class="reportFilters"><label>اليوم والتاريخ<select id="availableRoomDay"></select></label><label>الفترة<select id="availableRoomPeriod"></select></label><label>القاعة<select id="availableRoomName"></select></label></div><button id="printAvailableRoomsBtn" class="primary">طباعة القاعات المتاحة / PDF</button></article><div id="availableRoomsPreview" class="tableWrap freeReportPreview"></div></div>
+      <div id="report-available-trainers" class="subpanel"><article class="card"><h3>المدربون المتاحون</h3><div class="reportFilters"><label>اليوم والتاريخ<select id="availableTrainerDay"></select></label><label>الفترة<select id="availableTrainerPeriod"></select></label><label>المدرب<select id="availableTrainerName"></select></label></div><div class="actions"><button type="button" id="previewAvailableTrainersBtn" aria-controls="availableTrainersPreview">معاينة</button><button id="printAvailableTrainersBtn" class="primary">طباعة المدربين المتاحين / PDF</button></div></article><div id="availableTrainersPreview" class="tableWrap freeReportPreview" hidden></div></div>
+      <div id="report-available-rooms" class="subpanel"><article class="card"><h3>القاعات المتاحة</h3><div class="reportFilters"><label>اليوم والتاريخ<select id="availableRoomDay"></select></label><label>الفترة<select id="availableRoomPeriod"></select></label><label>القاعة<select id="availableRoomName"></select></label></div><div class="actions"><button type="button" id="previewAvailableRoomsBtn" aria-controls="availableRoomsPreview">معاينة</button><button id="printAvailableRoomsBtn" class="primary">طباعة القاعات المتاحة / PDF</button></div></article><div id="availableRoomsPreview" class="tableWrap freeReportPreview" hidden></div></div>
       <div id="report-portal" class="subpanel">
       <div class="grid two">
         <article class="card"><h3>بوابة المدربين عبر Google</h3><p>صدّر بيانات المراقبات بصيغة CSV واستوردها في ورقة «مراقبات» في Google Sheets. تعليمات النشر والسكريبت في المجلد المرفق.</p><button id="portalExportBtn">تصدير CSV للبوابة</button></article>
@@ -204,7 +204,7 @@
   <script src="vendor/highs-runtime.js"></script>
   <script src="optimizer.js"></script>
   <script src="distribution.js?v=5.5.1"></script>
-  <script src="app.js?v=5.5.1"></script>
-  <script src="identity.js"></script>
+  <script src="app.js?v=5.5.2"></script>
+  <script src="identity.js?v=5.5.2"></script>
 </body>
 </html>

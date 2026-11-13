@@ -58,23 +58,15 @@ if(typeof document!=="undefined")(()=>{
     const deptBars=data.departments.length?`<div class="departmentChart">${data.departments.map(d=>`<div class="departmentBarGroup"><div><span>${safe(d.label)}</span><b>${digits(d.value)}</b></div><div class="horizontalTrack"><div style="width:${d.value/maxDept*100}%"></div></div></div>`).join('')}</div>`:'<div class="chartEmpty">تظهر الأقسام من بيانات الشعب المجدولة</div>';
     document.getElementById('identityDashboard').innerHTML=chartCard('حالة الإسناد',`${digits(total)} شعبة مجدولة`,donut,'statusChart')+chartCard('الشعب حسب الأيام','عدد الشعب في كل يوم وتاريخ',dayBars,'daysChart')+chartCard('الشعب حسب الأقسام','من بيانات جدول الاختبارات',deptBars,'departmentsChart');
   }
-  function renderReportCharts(){
-    const counts=countAssignments(),entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ar')),departments=new Map();
-    for(const [name,count] of entries){const dept=findMonitoringTrainer(name)?.dept||'غير محدد';departments.set(dept,(departments.get(dept)||0)+count);}
-    const bars=(rows)=>{const max=Math.max(1,...rows.map(r=>r[1]));return rows.length?`<div class="departmentChart">${rows.map(([label,value])=>`<div class="departmentBarGroup"><div><span>${safe(label)}</span><b>${digits(value)}</b></div><div class="horizontalTrack"><div style="width:${value/max*100}%"></div></div></div>`).join('')}</div>`:'<div class="chartEmpty">تظهر الإحصاءات بعد إسناد المراقبات</div>';};
-    document.getElementById('identityReportCharts').innerHTML=chartCard('تكليفات المراقبة حسب الأقسام','حسب قسم المدرب؛ كل خانة مراقبة تكليف واحد',bars([...departments]),'')+chartCard('أكثر المدربين تكليفًا','أعلى عشرة حسب عدد المراقبات الفعلي',bars(entries.slice(0,10)),'');
-  }
   function indicatorRow(target,items){document.getElementById(target).innerHTML=items.map(([label,value,type])=>`<div class="compactIndicator"><span class="compactIcon">${icon(type)}</span><div><span>${label}</span><strong>${digits(value)}</strong></div></div>`).join('');}
   const originalMetrics=renderMetrics;renderMetrics=function(){originalMetrics();decorateMetrics(document.getElementById('metrics'));renderVisualDashboard();};
   const originalAudit=renderAudit;renderAudit=function(){originalAudit();decorateMetrics(document.getElementById('auditSummary'));updateAlerts();};
-  const originalReports=renderReports;renderReports=function(){originalReports();const counts=[...document.querySelectorAll('#trainerCounts .countRow')];const max=Math.max(1,...counts.map(r=>Number(r.querySelector('strong').textContent)));counts.forEach(row=>row.style.setProperty('--count-fill',`${Number(row.querySelector('strong').textContent)/max*100}%`));renderReportCharts();};
   const originalTrainers=renderTrainers;renderTrainers=function(){originalTrainers();indicatorRow('identityTrainerStats',[
     ['إجمالي المدربين',state.trainers.length,'trainers'],['المدربون النشطون',state.trainers.filter(activeTrainer).length,'check'],['غير نشط',state.trainers.filter(t=>!activeTrainer(t)).length,'availability'],['الأقسام',new Set(state.trainers.map(t=>t.dept).filter(Boolean)).size,'rooms']
   ]);};
   const originalRooms=renderRooms;renderRooms=function(){originalRooms();indicatorRow('identityRoomStats',[
     ['إجمالي القاعات',state.rooms.length,'rooms'],['محددة للتوزيع',state.rooms.filter(r=>r.enabled!==false).length,'check'],['مستبعدة',state.rooms.filter(r=>r.enabled===false).length,'availability']
   ]);};
-  document.querySelector('#report-trainers .grid').insertAdjacentHTML('beforebegin','<div id="identityReportCharts" class="reportCharts"></div>');
   for(const [page,id] of [['trainers','identityTrainerStats'],['rooms','identityRoomStats']])document.querySelector(`#page-${page} .sectionHead`).insertAdjacentHTML('afterend',`<div id="${id}" class="compactIndicators" aria-label="ملخص ${page==='trainers'?'المدربين':'القاعات'}"></div>`);
   document.querySelectorAll('#tabs button[data-page]').forEach(button=>button.insertAdjacentHTML('afterbegin',icon(button.dataset.page)));
   document.querySelectorAll('.page').forEach(page=>{const heading=page.querySelector('h2');if(heading)heading.insertAdjacentHTML('afterbegin',`<span class="pageHeadingIcon">${icon(page.id.replace('page-',''))}</span>`);});

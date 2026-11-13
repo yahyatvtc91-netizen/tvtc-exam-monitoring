@@ -83,7 +83,6 @@ dialog{border:1px solid #dbe9e5;border-radius:15px;box-shadow:0 20px 75px #173b3
 @media(max-width:1100px){:root{--sidebar-width:185px}.appLayout main{padding:18px 12px}.tabs button{font-size:11px}#scheduleTable td,#scheduleTable th{padding:6px 3px}.selectionLabel{font-size:10px}#trainersTable input:not([type=checkbox]),#trainersTable textarea,#trainersTable select{font-size:11px}}
 @media(max-width:720px){.topbar h1{font-size:21px}.tabs{position:sticky;top:0;width:100%;height:auto;display:flex;flex-direction:row;max-height:80px}.tabs button{white-space:nowrap}.appLayout{padding-right:0}.topbar{margin-right:0}.auditIssue{align-items:start;flex-direction:column}.announcementSheet{padding:12px}.announcementSheet td,.announcementSheet th{font-size:9px;padding:5px 3px}.announcementSheet td:nth-child(2),.announcementSheet td:nth-child(4),.announcementSheet td:nth-child(6),.announcementSheet td:nth-child(7){white-space:normal;font-size:9px}}
 
-.reportCharts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-bottom:20px}.reportCharts .departmentChart{gap:12px}.reportCharts .chartEmpty{min-height:130px}@media(max-width:900px){.reportCharts{grid-template-columns:1fr}}
 
 #scheduleTable input[type=checkbox]{width:15px!important;min-width:0!important;max-width:15px!important;height:15px;margin:0;display:block}#scheduleTable td:nth-child(12){text-align:center;padding:4px}
 
@@ -261,27 +260,27 @@ dialog{border:1px solid #dbe9e5;border-radius:15px;box-shadow:0 20px 75px #173b3
 .departmentBuildingCard .filters{margin-top:10px;gap:10px;flex-wrap:wrap}
 
 /* 5.5 - modern soft action panel: schedule page only */
-#page-schedule .scheduleModernHead{background:#fff;border:1px solid #dce9e8;border-radius:22px;padding:22px;margin-bottom:20px;box-shadow:0 8px 26px rgba(15,70,77,.06);display:grid;grid-template-columns:minmax(220px,.8fr) minmax(380px,1.2fr);gap:24px;align-items:start}
+#page-schedule .scheduleModernHead{background:#fff;border:1px solid #dce9e8;border-radius:22px;padding:16px;margin-bottom:14px;box-shadow:0 8px 26px rgba(15,70,77,.06);display:grid;grid-template-columns:minmax(220px,.8fr) minmax(380px,1.2fr);gap:16px;align-items:start}
 #page-schedule .scheduleModernIntro{display:flex;gap:13px;align-items:flex-start}
 #page-schedule .scheduleModernIntro h2{margin:3px 0 10px;color:#174651;font-size:22px}
 #page-schedule .scheduleModernIntro p{margin:0;color:#647b83;font-size:13px;line-height:1.9}
 #page-schedule .scheduleModernSymbol{display:grid;place-items:center;flex:none;width:46px;height:46px;background:#e0f3f0;color:#0f766e;border-radius:15px}
 #page-schedule .scheduleModernSymbol svg{width:24px;height:24px}
-#page-schedule .scheduleActionRows{display:grid;gap:10px;width:100%;min-width:0}
-#page-schedule .scheduleModernCaption{font-size:12px;font-weight:800;color:#526a73;margin-top:3px}
+#page-schedule .scheduleActionRows{display:grid;gap:6px;width:100%;min-width:0}
+#page-schedule .scheduleModernCaption{font-size:12px;font-weight:800;color:#526a73;margin-top:0}
 #page-schedule .scheduleModernPrimary,#page-schedule .scheduleModernReset{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-#page-schedule .scheduleActionRows button{height:auto;min-height:58px;width:100%;padding:13px 12px;border-radius:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;line-height:1.4;font-size:13px;transition:transform .16s ease,box-shadow .16s ease,background-color .16s ease}
-#page-schedule .scheduleActionRows button .scheduleBtnIcon{width:21px;height:21px;flex:none}
+#page-schedule .scheduleActionRows button{height:auto;min-height:42px;width:100%;padding:8px 10px;border-radius:11px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;line-height:1.4;font-size:13px;transition:transform .16s ease,box-shadow .16s ease,background-color .16s ease}
+#page-schedule .scheduleActionRows button .scheduleBtnIcon{width:17px;height:17px;flex:none}
 #page-schedule .scheduleActionRows button:focus-visible{outline:3px solid #5ac6bc;outline-offset:3px}
 #page-schedule .scheduleActionRows button:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 7px 17px rgba(12,91,94,.13)}
-#page-schedule .scheduleActionRows .scheduleModernMain{min-height:82px;background:#0d9488;color:#fff;border:1px solid #0d9488}
+#page-schedule .scheduleActionRows .scheduleModernMain{background:#0d9488;color:#fff;border:1px solid #0d9488}
 #page-schedule .scheduleActionRows #assignRoomsBtn{background:#0f766e;border-color:#0f766e}
-#page-schedule .scheduleActionRows .scheduleModernAlt{background:#fff;color:#145b60;border:1px solid #cbdedc;min-height:66px}
-#page-schedule .scheduleModernResetCaption{border-top:1px solid #e5efee;padding-top:11px}
-#page-schedule .scheduleActionRows .scheduleModernDanger{background:#fff5f4;color:#ad3535;border:1px solid #f2d4d1;min-height:46px;flex-direction:row;gap:7px}
+#page-schedule .scheduleActionRows .scheduleModernAlt{background:#fff;color:#145b60;border:1px solid #cbdedc}
+#page-schedule .scheduleModernResetCaption{border-top:1px solid #e5efee;padding-top:6px}
+#page-schedule .scheduleActionRows .scheduleModernDanger{background:#fff5f4;color:#ad3535;border:1px solid #f2d4d1}
 #page-schedule .scheduleActionRows .scheduleModernDanger .scheduleBtnIcon{width:17px;height:17px}
 @media(max-width:1100px){#page-schedule .scheduleModernHead{grid-template-columns:1fr}}
-@media(max-width:520px){#page-schedule .scheduleModernHead{padding:15px;border-radius:17px}#page-schedule .scheduleModernPrimary,#page-schedule .scheduleModernReset{gap:7px}#page-schedule .scheduleActionRows button{font-size:12px;padding:10px 7px}#page-schedule .scheduleActionRows .scheduleModernDanger{flex-direction:column}}
+@media(max-width:520px){#page-schedule .scheduleModernHead{padding:15px;border-radius:17px}#page-schedule .scheduleModernPrimary,#page-schedule .scheduleModernReset{gap:7px}#page-schedule .scheduleActionRows button{font-size:12px;padding:7px 6px}}
 @media(prefers-reduced-motion:reduce){#page-schedule .scheduleActionRows button{transition:none}#page-schedule .scheduleActionRows button:not(:disabled):hover{transform:none}}
 
 /* إشعارات موحدة — لا تمس خوارزميات التوزيع */
@@ -296,3 +295,16 @@ dialog{border:1px solid #dbe9e5;border-radius:15px;box-shadow:0 20px 75px #173b3
 #toast .toast-close:hover,#toast .toast-close:focus-visible{background:#00000010;outline:2px solid currentColor;outline-offset:1px}
 @media(max-width:600px){#toast.toast{left:12px;bottom:12px;right:12px;max-width:none;min-width:0}}
 @media print{#toast.toast{display:none!important}}
+
+/* Distribution summary and on-demand report previews */
+#report-summary #trainerAverage{margin-block:8px 12px}
+#report-summary .countGroup{width:min(100%, 38rem);margin-block:12px 18px}
+#report-summary .countGroupTitle{margin:0 0 6px}
+#report-summary .countGroup table{width:100%;border-collapse:collapse}
+#report-summary .countGroup th,#report-summary .countGroup td{padding:6px 10px;text-align:start;border-bottom:1px solid #e0eceb}
+#report-summary .countGroup thead th{background:#e8f3f2;color:#174651}
+#report-summary .countGroup tbody th{font-weight:500;overflow-wrap:anywhere}
+#report-summary .countGroup tbody tr:nth-child(even){background:#f6faf9}
+#report-summary .countGroup th:last-child,#report-summary .countGroup td:last-child{width:7rem;text-align:center}
+#report-summary .countGroup td{color:#08756d;font-weight:700}
+#page-reports .freeReportPreview[hidden]{display:none}
