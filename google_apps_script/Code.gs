@@ -9,8 +9,8 @@ function doGet() {
 
 function getSchedule(employeeId) {
   const id = String(employeeId || '').replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
-    .replace(/s/g, '');
-  if (!/^d{3,15}$/.test(id)) throw new Error('أدخل رقمًا وظيفيًا صحيحًا.');
+    .replace(/\s/g, '');
+  if (!/^\d{3,15}$/.test(id)) throw new Error('أدخل رقمًا وظيفيًا صحيحًا.');
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
   if (!sheet) throw new Error('ورقة «مراقبات» غير موجودة.');
   const values = sheet.getDataRange().getDisplayValues();
