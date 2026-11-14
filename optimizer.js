@@ -240,7 +240,7 @@ function createExamOptimizer() {
     const roster = new Map(input.people.map(t => [t.id, t]));
     const fixed = new Map(input.people.map(t => [t.id, new Set()]));
     const groups = new Map();
-    const outside = new Map(), leader = new Map(), third = new Map(), adjacent = new Map();
+    const outside = new Map(), leader = new Map(), third = new Map(), gaps = new Map();
     for (const [slot, exams] of timing.slots) {
       const byDepartment = new Map();
       groups.set(slot, byDepartment);
@@ -304,9 +304,20 @@ function createExamOptimizer() {
             continue;
           }
           run++;
+          for (let j = 0; j < i - 1; j++) {
+            const earlier = work.get(sequence[j]);
+            if (earlier === undefined) continue;
+            const gap = linear.variable();
+            const between = sequence.slice(j + 1, i).map(slot => work.get(slot)).filter(v => v !== undefined);
+            const terms = sum(between, -1);
+            terms.set(earlier, 1);
+            terms.set(current, 1);
+            terms.set(gap, -1);
+            linear.row(terms, undefined, 1);
+            gaps.set(gap, 1);
+          }
           const previous = work.get(sequence[i - 1]);
           if (previous === undefined) continue;
-          adjacent.set(and(linear, [previous, current]), 1);
           const first = work.get(sequence[i - 2]);
           if (first === undefined) continue;
           if (sequence.slice(i - 2, i + 1).every(slot => fixedSlots.has(slot))) {
@@ -328,7 +339,7 @@ function createExamOptimizer() {
     for (const byDepartment of groups.values()) for (const team of byDepartment.values()) {
       if (team.picks.length) linear.row(sum(team.picks.map(pair => pair[1])), undefined, team.open);
     }
-    return {loads, limits, groups, outside, leader, third, adjacent, committeeLoads,
+    return {loads, limits, groups, outside, leader, third, gaps, committeeLoads,
       count: sum(loads.values(), -1)};
   }
 
@@ -386,8 +397,8 @@ function createExamOptimizer() {
       }
       stages.step("موازنة الأنصبة على مستوى الكلية", new Map([[spread, 1]]));
     }
+    stages.step("تقليل الفراغ بين فترات المراقب في اليوم نفسه", plan.gaps);
     stages.step("أولوية المراقبة داخل القسم", plan.outside);
-    stages.step("تقليل المراقبات المتتابعة", plan.adjacent);
     return policy;
   }
 

@@ -184,7 +184,7 @@ function validateDistribution(input, result, mode) {
   const occupiedRooms = new Set(), occupiedPeople = new Set(), occupiedGroups = new Set();
   const buildings = new Map(), peopleDays = new Map();
   let roomCount = 0, filled = 0, complete = 0, inside = 0, outside = 0, leadership = 0;
-  let overCapacity = 0;
+  let overCapacity = 0, monitoringGaps = 0;
   function claim(taken, key, message) {
     if (taken.has(key)) throw new Error(message);
     taken.add(key);
@@ -239,6 +239,8 @@ function validateDistribution(input, result, mode) {
       }
     }
     for (const periods of peopleDays.values()) {
+      const indexes = input.periods.flatMap((period, i) => periods.has(period) ? [i] : []);
+      monitoringGaps += indexes.filter((index, i) => i > 0 && index > indexes[i - 1] + 1).length;
       for (let i = 2; i < input.periods.length; i++) {
         if (input.periods.slice(i-2,i+1).every(p => periods.has(p))) throw new Error("وجد تكليف بثلاث فترات متتالية للمراقب نفسه.");
       }
@@ -247,7 +249,7 @@ function validateDistribution(input, result, mode) {
   const standard = (result.policy?.peers || []).map(id => counts.get(id));
   const max = standard.length ? Math.max(...standard) : null;
   const min = standard.length ? Math.min(...standard) : null;
-  return {rows, roomCount, filled, complete, inside, outside, leadership, overCapacity, committeeShortfalls,
+  return {rows, roomCount, filled, complete, inside, outside, leadership, overCapacity, committeeShortfalls, monitoringGaps,
     min, max, gap:standard.length ? max-min : null, standard:standard.length,
     limited:result.policy?.limited.length || 0,
     certified:result.stages.every(stage => stage.status === "optimal")};
@@ -375,6 +377,7 @@ async function runOptimizedDistribution(mode) {
     if (mode === "both") parts.push(`الاختبارات المكتملة ${m.complete}/${total}`);
     if (mode !== "rooms") {
       parts.push(`خانات المراقبة ${m.filled}/${total * 2}`);
+      if (m.monitoringGaps) parts.push(`فراغات بين فترات المراقب في اليوم نفسه: ${m.monitoringGaps}`);
       for (const {name, assigned, target} of m.committeeShortfalls) {
         parts.push(`عضو اللجنة ${name}: أُسندت ${assigned} من ${target} مراقبات (النقص ${target - assigned})`);
       }
@@ -390,7 +393,7 @@ async function runOptimizedDistribution(mode) {
     }
     if (!m.certified) parts.push("نتيجة مدققة ضمن المهلة");
     parts.push(`${((performance.now() - started) / 1000).toFixed(1)} ثانية`);
-    const needsReview = m.committeeShortfalls.length > 0 || m.gap > MAX_MONITORING_GAP || m.complete < total || !m.certified;
+    const needsReview = m.monitoringGaps > 0 || m.committeeShortfalls.length > 0 || m.gap > MAX_MONITORING_GAP || m.complete < total || !m.certified;
     renderDistributionStatus(parts.join(" · "), needsReview ? "review" : "done");
     notify(`${needsReview?"اكتمل التوزيع مع ملاحظات":"اكتمل التوزيع بنجاح"} · ${parts.join(" · ")}`,needsReview?"warning":"success");
     return monitorResult;
